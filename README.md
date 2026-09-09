@@ -1,1 +1,1 @@
-An implementation for heart rate monitors and indoor cycling trainers using BLE as part of a year 3 Creative Media and Game Technologies (programming track) at Breda University of applied sciences
+An implementation for heart rate monitors and indoor cycling trainers using BLE as part of an 8 week year 3 Creative Media and Game Technologies (programming track) project at Breda University of applied sciences
