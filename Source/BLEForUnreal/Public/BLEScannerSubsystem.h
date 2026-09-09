@@ -8,6 +8,17 @@
 
 class IBLETransport;
 
+USTRUCT(BlueprintType)
+struct FBLEScanResult
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadOnly)
+	FString DeviceId;
+};
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FONBLEDeviceDiscovered, const FBLEScanResult&, ScanResult);
+
 /**
  * 
  */
@@ -23,6 +34,12 @@ public:
 
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
 	virtual void Deinitialize() override;
+
+	UPROPERTY(BlueprintAssignable, category="BLE")
+	FONBLEDeviceDiscovered OnDeviceDiscovered;
+
+private:
+	void HandleTransportDeviceFound(const FBLEScanResult& result);
 
 private:
 	TUniquePtr<IBLETransport> Transport;
