@@ -49,5 +49,13 @@ public class BLEForUnreal : ModuleRules
 				// ... add any modules that your module loads dynamically here ...
 			}
 			);
+
+		// Conditionals for platform specific modules
+		if (Target.Platform == UnrealTargetPlatform.Win64)
+		{
+			CppStandard = CppStandardVersion.Cpp20; // Coroutines got standardized in C++20
+
+			PublicSystemLibraries.Add("windowsapp.lib"); // Umbrella library, probably better to link to specific libraries for memory footprint purposes
+		}
 	}
 }
