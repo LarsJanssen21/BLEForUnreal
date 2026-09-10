@@ -1,5 +1,6 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
+using System.IO;
 using UnrealBuildTool;
 
 public class BLEForUnreal : ModuleRules
@@ -56,6 +57,12 @@ public class BLEForUnreal : ModuleRules
 			CppStandard = CppStandardVersion.Cpp20; // Coroutines got standardized in C++20
 
 			PublicSystemLibraries.Add("windowsapp.lib"); // Umbrella library, probably better to link to specific libraries for memory footprint purposes
+			PrivateIncludePaths.Add(Path.Combine(
+				Target.WindowsPlatform.WindowsSdkDir,
+				"Include",
+				Target.WindowsPlatform.WindowsSdkVersion,
+				"cppwinrt")
+				);
 		}
 	}
 }

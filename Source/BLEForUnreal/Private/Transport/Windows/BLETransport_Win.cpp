@@ -7,10 +7,11 @@
 #include "winrt/windows.foundation.collections.h"
 #include "winrt/windows.devices.bluetooth.h"
 
+#include "CoreMinimal.h"
 
 BLETransportWindows::BLETransportWindows()
 {
-	winrt::init_apartment(winrt::apartment_type::multi_threaded);
+
 }
 
 BLETransportWindows::~BLETransportWindows()
@@ -40,5 +41,14 @@ void BLETransportWindows::OnAdvertisementReceived(
 	BluetoothLEAdvertisementWatcher const& Sender,
 	BluetoothLEAdvertisementReceivedEventArgs const& Args)
 {
+	FBLEScanResult Result;
+	Result.DeviceId = winrt::to_hstring(Args.BluetoothAddress()).c_str();
+	Result.DeviceLocalName = winrt::to_hstring(Args.Advertisement().LocalName()).c_str();
 
+	AsyncTask(ENamedThreads::GameThread, 
+		[this, Result = MoveTemp(Result)]
+		{
+			OnDeviceFound.ExecuteIfBound(Result);
+		}
+	);
 }
