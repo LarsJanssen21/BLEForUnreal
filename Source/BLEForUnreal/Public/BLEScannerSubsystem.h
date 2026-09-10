@@ -56,11 +56,10 @@ public:
 private:
 	void HandleTransportDeviceFound(const FBLEScanResult& result);
 
-	bool HandleTickerEvent(float deltaTime);
+	bool HandleScanTimeoutTickerEvent(float deltaTime);
 private:
 	TUniquePtr<IBLETransport> Transport;
 
 	bool bIsScanning = false;
-
-	FTSTicker::FDelegateHandle TickerHandle;
+	FTSTicker::FDelegateHandle ScanTimeoutTickerHandle;
 };

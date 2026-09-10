@@ -47,8 +47,8 @@ void UBLEScannerSubsystem::StartScan(float TimeoutSeconds)
 
 	if (TimeoutSeconds > 0.0f)
 	{
-		TickerHandle = FTSTicker::GetCoreTicker().AddTicker(
-			FTickerDelegate::CreateUObject(this, &UBLEScannerSubsystem::HandleTickerEvent), 
+		ScanTimeoutTickerHandle = FTSTicker::GetCoreTicker().AddTicker(
+			FTickerDelegate::CreateUObject(this, &UBLEScannerSubsystem::HandleScanTimeoutTickerEvent),
 			TimeoutSeconds
 		);
 	}
@@ -64,7 +64,7 @@ void UBLEScannerSubsystem::StopScan()
 	bIsScanning = false;
 	Transport->StopScan();
 
-	FTSTicker::GetCoreTicker().RemoveTicker(TickerHandle);
+	FTSTicker::GetCoreTicker().RemoveTicker(ScanTimeoutTickerHandle);
 }
 
 void UBLEScannerSubsystem::HandleTransportDeviceFound(const FBLEScanResult& Result)
@@ -74,7 +74,7 @@ void UBLEScannerSubsystem::HandleTransportDeviceFound(const FBLEScanResult& Resu
 	OnDeviceDiscovered.Broadcast(Result);
 }
 
-bool UBLEScannerSubsystem::HandleTickerEvent(float DeltaTime)
+bool UBLEScannerSubsystem::HandleScanTimeoutTickerEvent(float DeltaTime)
 {
 	StopScan();
 	OnScanTimeout.Broadcast();
