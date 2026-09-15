@@ -12,8 +12,6 @@
 class IBLETransport;
 class UBLEScanRequest;
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FONBLEDeviceDiscovered, const FBLEScanResult&, ScanResult);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE(FONBLEScanTimeout);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnBLEDeviceConnected, UBLEDevice*, ConnectedDevice, bool, bSuccess);
 
 /**
@@ -35,19 +33,6 @@ public:
 	UFUNCTION(BLueprintCallable, Category="BLE")
 	UBLEScanRequest* StartFilteredScan(EBLEDeviceCategory Category);
 
-	UFUNCTION(BlueprintCallable, Category="BLE")
-	void StartScan(float TimeoutSeconds = 15.0f);
-
-
-	UFUNCTION(BlueprintCallable, Category="BLE")
-	void StopScan();
-
-	UPROPERTY(BlueprintAssignable, category="BLE")
-	FONBLEDeviceDiscovered OnDeviceDiscovered;
-
-	UPROPERTY(BlueprintAssignable, category="BLE")
-	FONBLEScanTimeout OnScanTimeout;
-
 	UPROPERTY(BlueprintAssignable, category="BLE")
 	FOnBLEDeviceConnected OnDeviceConnected;
 
@@ -55,9 +40,11 @@ public:
 	void UnregisterScanRequest(UBLEScanRequest* Request);
 
 private:
-	void HandleTransportDeviceFound(const FBLEScanResult& result);
+	void StartScan();
+	
+	void StopScan();
 
-	bool HandleScanTimeoutTickerEvent(float deltaTime);
+	void HandleTransportDeviceFound(const FBLEScanResult& result);
 private:
 	TUniquePtr<IBLETransport> Transport;
 
@@ -65,7 +52,5 @@ private:
 	TArray<UBLEDevice*> ConnectedDevices;
 
 	bool bIsScanning = false;
-	FTSTicker::FDelegateHandle ScanTimeoutTickerHandle;
-
 	TArray<UBLEScanRequest*> ScanRequests;
 };

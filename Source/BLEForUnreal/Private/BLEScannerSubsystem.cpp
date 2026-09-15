@@ -53,7 +53,7 @@ UBLEScanRequest* UBLEScannerSubsystem::StartFilteredScan(EBLEDeviceCategory Cate
 	return Request;
 }
 
-void UBLEScannerSubsystem::StartScan(float TimeoutSeconds)
+void UBLEScannerSubsystem::StartScan()
 {
 	if (!Transport.IsValid() || bIsScanning)
 	{
@@ -62,14 +62,6 @@ void UBLEScannerSubsystem::StartScan(float TimeoutSeconds)
 
 	bIsScanning = true;
 	Transport->StartScan();
-
-	if (TimeoutSeconds > 0.0f)
-	{
-		ScanTimeoutTickerHandle = FTSTicker::GetCoreTicker().AddTicker(
-			FTickerDelegate::CreateUObject(this, &UBLEScannerSubsystem::HandleScanTimeoutTickerEvent),
-			TimeoutSeconds
-		);
-	}
 }
 
 void UBLEScannerSubsystem::StopScan()
@@ -81,8 +73,6 @@ void UBLEScannerSubsystem::StopScan()
 
 	bIsScanning = false;
 	Transport->StopScan();
-
-	FTSTicker::GetCoreTicker().RemoveTicker(ScanTimeoutTickerHandle);
 }
 
 void UBLEScannerSubsystem::UnregisterScanRequest(UBLEScanRequest* Request)
@@ -97,23 +87,14 @@ void UBLEScannerSubsystem::UnregisterScanRequest(UBLEScanRequest* Request)
 
 void UBLEScannerSubsystem::HandleTransportDeviceFound(const FBLEScanResult& Result)
 {
-	// Transport callbacks are guaranteed to be marshaled onto the game thread
-	// by IBLETransport itself, so it's safe to broadcast directly here
-	OnDeviceDiscovered.Broadcast(Result);
 
 	for (UBLEScanRequest* Request : ScanRequests)
 	{
 		if (Request && Request->MatchesFilter(Result))
 		{
+			// Transport callbacks are guaranteed to be marshaled onto the game thread
+			// by IBLETransport itself, so it's safe to broadcast directly here
 			Request->OnDeviceDiscovered.Broadcast(Result);
 		}
 	}
-}
-
-bool UBLEScannerSubsystem::HandleScanTimeoutTickerEvent(float DeltaTime)
-{
-	StopScan();
-	OnScanTimeout.Broadcast();
-
-	return false; // Removes the ticker automatically from the FTSTicker, no need to call RemoveTicker()
 }
