@@ -2,8 +2,10 @@
 
 #include "BLEScannerSubsystem.h"
 
+#include "BLEHelpers.h"
 #include "IBLETransport.h"
 #include "BLEScanRequest.h"
+
 
 UBLEScannerSubsystem::UBLEScannerSubsystem() = default;
 
@@ -87,7 +89,6 @@ void UBLEScannerSubsystem::UnregisterScanRequest(UBLEScanRequest* Request)
 
 void UBLEScannerSubsystem::HandleTransportDeviceFound(const FBLEScanResult& Result)
 {
-
 	for (UBLEScanRequest* Request : ScanRequests)
 	{
 		if (Request && Request->MatchesFilter(Result))
