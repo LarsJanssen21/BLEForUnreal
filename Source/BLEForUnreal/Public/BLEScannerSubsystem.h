@@ -1,29 +1,20 @@
-
-
 #pragma once
 
 #include "CoreMinimal.h"
 #include "Subsystems/EngineSubsystem.h"
 #include "Containers/Ticker.h"
 
+#include "BLEDevice.h"
+#include "BLETypes.h"
+
 #include "BLEScannerSubsystem.generated.h"
 
 class IBLETransport;
-
-USTRUCT(BlueprintType)
-struct FBLEScanResult
-{
-	GENERATED_BODY()
-
-	UPROPERTY(BlueprintReadOnly)
-	FString DeviceId;
-
-	UPROPERTY(BlueprintReadOnly)
-	FString DeviceLocalName;
-};
+class UBLEScanRequest;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FONBLEDeviceDiscovered, const FBLEScanResult&, ScanResult);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FONBLEScanTimeout);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnBLEDeviceConnected, UBLEDevice*, ConnectedDevice, bool, bSuccess);
 
 /**
  * 
@@ -41,8 +32,12 @@ public:
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
 	virtual void Deinitialize() override;
 
+	UFUNCTION(BLueprintCallable, Category="BLE")
+	UBLEScanRequest* StartFilteredScan(EBLEDeviceCategory Category);
+
 	UFUNCTION(BlueprintCallable, Category="BLE")
 	void StartScan(float TimeoutSeconds = 15.0f);
+
 
 	UFUNCTION(BlueprintCallable, Category="BLE")
 	void StopScan();
@@ -53,6 +48,12 @@ public:
 	UPROPERTY(BlueprintAssignable, category="BLE")
 	FONBLEScanTimeout OnScanTimeout;
 
+	UPROPERTY(BlueprintAssignable, category="BLE")
+	FOnBLEDeviceConnected OnDeviceConnected;
+
+public:
+	void UnregisterScanRequest(UBLEScanRequest* Request);
+
 private:
 	void HandleTransportDeviceFound(const FBLEScanResult& result);
 
@@ -60,6 +61,11 @@ private:
 private:
 	TUniquePtr<IBLETransport> Transport;
 
+	UPROPERTY()
+	TArray<UBLEDevice*> ConnectedDevices;
+
 	bool bIsScanning = false;
 	FTSTicker::FDelegateHandle ScanTimeoutTickerHandle;
+
+	TArray<UBLEScanRequest*> ScanRequests;
 };

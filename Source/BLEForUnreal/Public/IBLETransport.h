@@ -5,6 +5,7 @@
 struct FBLEScanResult;
 
 DECLARE_DELEGATE_OneParam(FONBLETransportDeviceFound, const FBLEScanResult& /*Result*/);
+DECLARE_DELEGATE_TwoParams(FONBLETransportConnectComplete, const FString& DeviceId, bool bSuccess);
 
 class IBLETransport
 {
@@ -16,5 +17,8 @@ public:
 	virtual void StartScan() = 0;
 	virtual void StopScan() = 0;
 
+	virtual void ConnectToDevice(const FString& DeviceId) = 0;
+
 	FONBLETransportDeviceFound OnDeviceFound;
+	FONBLETransportConnectComplete OnTransportConnectComplete;
 };
