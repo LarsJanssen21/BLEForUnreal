@@ -2,10 +2,8 @@
 
 #include "BLEScannerSubsystem.h"
 
-#include "BLEHelpers.h"
 #include "IBLETransport.h"
 #include "BLEScanRequest.h"
-
 
 UBLEScannerSubsystem::UBLEScannerSubsystem() = default;
 
@@ -26,6 +24,7 @@ void UBLEScannerSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	if (Transport.IsValid())
 	{
 		Transport->OnDeviceFound.BindUObject(this, &UBLEScannerSubsystem::HandleTransportDeviceFound);
+		Transport->OnConnectComplete.BindUObject(this, &UBLEScannerSubsystem::HandleTransportConnectionComplete);
 	}
 }
 
@@ -55,27 +54,14 @@ UBLEScanRequest* UBLEScannerSubsystem::StartFilteredScan(EBLEDeviceCategory Cate
 	return Request;
 }
 
-void UBLEScannerSubsystem::StartScan()
+void UBLEScannerSubsystem::ConnectToDevice(const FString& DeviceId)
 {
-	if (!Transport.IsValid() || bIsScanning)
+	if (Transport.IsValid())
 	{
-		return;
+		Transport->ConnectToDevice(DeviceId);
 	}
-
-	bIsScanning = true;
-	Transport->StartScan();
 }
 
-void UBLEScannerSubsystem::StopScan()
-{
-	if (!Transport.IsValid() || !bIsScanning)
-	{
-		return;
-	}
-
-	bIsScanning = false;
-	Transport->StopScan();
-}
 
 void UBLEScannerSubsystem::UnregisterScanRequest(UBLEScanRequest* Request)
 {
@@ -98,4 +84,31 @@ void UBLEScannerSubsystem::HandleTransportDeviceFound(const FBLEScanResult& Resu
 			Request->OnDeviceDiscovered.Broadcast(Result);
 		}
 	}
+}
+
+void UBLEScannerSubsystem::HandleTransportConnectionComplete(const FString& DeviceId, bool bSuccess)
+{
+	
+}
+
+void UBLEScannerSubsystem::StartScan()
+{
+	if (!Transport.IsValid() || bIsScanning)
+	{
+		return;
+	}
+
+	bIsScanning = true;
+	Transport->StartScan();
+}
+
+void UBLEScannerSubsystem::StopScan()
+{
+	if (!Transport.IsValid() || !bIsScanning)
+	{
+		return;
+	}
+
+	bIsScanning = false;
+	Transport->StopScan();
 }

@@ -2,6 +2,7 @@
 
 #include "BLETypes.h"
 #include "BLEScannerSubsystem.h"
+#include "BLEUuid.h"
 
 #include "winrt/base.h"
 #include "winrt/windows.foundation.h"
@@ -42,12 +43,71 @@ void BLETransportWindows::ConnectToDevice(const FString& DeviceId)
 {
 	uint64_t ParsedAddress = FCString::Strtoui64(*DeviceId, nullptr, 16);
 	
-	BluetoothLEDevice::FromBluetoothAddressAsync(ParsedAddress).Completed([this](auto const& Sender, AsyncStatus Status)
+	BluetoothLEDevice::FromBluetoothAddressAsync(ParsedAddress).Completed([this, DeviceId](IAsyncOperation<BluetoothLEDevice> const& Op, AsyncStatus Status)
 		{
 			// TODO: Handle AsyncStatus 
-			BluetoothLEDevice Device = Sender.GetResults();
-			OnConnectionComplete(Device);
+			BluetoothLEDevice Device = { nullptr };
+
+			if (Status == AsyncStatus::Completed)
+			{
+				Device = Op.GetResults();
+			}
+
+			if (!Device)
+			{
+				AsyncTask(ENamedThreads::GameThread, [this, DeviceId]()
+					{
+						OnConnectComplete.ExecuteIfBound(DeviceId, false);
+					}
+				);
+				return;
+			}
+
+			DiscoverServicesAndComplete(Device, DeviceId);
 		});
+}
+
+void BLETransportWindows::DiscoverServicesAndComplete(BluetoothLEDevice Device, const FString& DeviceId)
+{
+	Device.GetGattServicesAsync(BluetoothCacheMode::Uncached).Completed(
+		[this, Device, DeviceId](IAsyncOperation<GattDeviceServicesResult> const& Op, AsyncStatus Status)
+		{
+			const bool bDiscovereySucceeded =
+				Status == AsyncStatus::Completed
+				&& Op.GetResults().Status() == GattCommunicationStatus::Success;
+
+			if (!bDiscovereySucceeded)
+			{
+				AsyncTask(ENamedThreads::GameThread, [this, DeviceId]()
+					{
+						OnConnectComplete.ExecuteIfBound(DeviceId, false);
+					}
+				);
+				return;
+			}
+
+			FConnectedDeviceEntry Entry;
+			Entry.Device = Device;
+
+			TArray<FString> DiscoveredServiceUuids;
+			for (GattDeviceService const& Service : Op.GetResults().Services())
+			{
+				const FString NormalizedUuid = BLEUuid::Normalize(winrt::to_hstring(Service.Uuid()).c_str());
+				if (!NormalizedUuid.IsEmpty())
+				{
+					Entry.Services.Add(NormalizedUuid, Service);
+				}
+			}
+
+			ConnectedDevices.Add(DeviceId, MoveTemp(Entry));
+
+			AsyncTask(ENamedThreads::GameThread, [this, DeviceId, DiscoveredServiceUuids = MoveTemp(DiscoveredServiceUuids)]
+				{
+					OnConnectComplete.ExecuteIfBound(DeviceId, true);
+				}
+			);
+		}
+	);
 }
 
 void BLETransportWindows::OnAdvertisementReceived(
@@ -70,31 +130,4 @@ void BLETransportWindows::OnAdvertisementReceived(
 			OnDeviceFound.ExecuteIfBound(Result);
 		}
 	);
-}
-
-void BLETransportWindows::OnConnectionComplete(BluetoothLEDevice device)
-{
-	FString DeviceId = {};
-	bool bSuccess = false;
-
-	DeviceId = FormatDeviceId(device.BluetoothAddress());
-
-	for (const auto& service : device.GattServices())
-	{
-		for (const auto& characteristic : service.GetAllCharacteristics())
-		{
-			FString str = DeviceId;
-			str += winrt::to_hstring(service.Uuid()).c_str();
-			str += winrt::to_hstring(characteristic.Uuid()).c_str();
-
-			CharacteristicsRegistry.Add({ str, characteristic });
-		}
-	}
-	
-	// Marshal back to the game thread
-	AsyncTask(ENamedThreads::GameThread,
-		[this, DeviceId = MoveTemp(DeviceId), bSuccess = MoveTemp(bSuccess)]
-		{
-			OnTransportConnectComplete.ExecuteIfBound(DeviceId, bSuccess);
-		});
 }

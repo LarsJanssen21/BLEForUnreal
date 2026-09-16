@@ -17,7 +17,6 @@ class BLEFORUNREAL_API UBLEDevice : public UObject
 	GENERATED_BODY()
 
 public:
-
 	void Initialize(const FString& InDeviceId, IBLETransport* InTransport);
 
 	UFUNCTION(BlueprintPure, category="BLE")

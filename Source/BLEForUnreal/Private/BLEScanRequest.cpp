@@ -2,8 +2,7 @@
 
 #include "BLEScannerSubsystem.h"
 
-#include "BLEHelpers.h"
-#include "BLEIDs.h"
+#include "BLEUuid.h"
 
 void UBLEScanRequest::StopScan()
 {
@@ -27,8 +26,8 @@ bool UBLEScanRequest::MatchesFilter(const FBLEScanResult& Result) const
 		{
 			case EBLEDeviceCategory::HeartRate:
 			{
-				FString ServiceGUID = BLEHelpers::ShortServiceUUIDToGUIDString(static_cast<uint16>(BLEServiceID::HeartRateService));
-				if (service.Equals(ServiceGUID, ESearchCase::IgnoreCase))
+				FString ServiceGUID = BLEUuid::Normalize(BLEUuid::ExpandShortUuidString(BLEUuid::HeartRateServiceUUID));
+				if (BLEUuid::AreEqual(ServiceGUID, service))
 				{
 					return true;
 				}

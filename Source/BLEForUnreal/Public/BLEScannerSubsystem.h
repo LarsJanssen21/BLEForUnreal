@@ -33,18 +33,22 @@ public:
 	UFUNCTION(BLueprintCallable, Category="BLE")
 	UBLEScanRequest* StartFilteredScan(EBLEDeviceCategory Category);
 
+	UFUNCTION(BlueprintCallable, Category="BLE")
+	void ConnectToDevice(const FString& DeviceId);
+
 	UPROPERTY(BlueprintAssignable, category="BLE")
 	FOnBLEDeviceConnected OnDeviceConnected;
 
 public:
 	void UnregisterScanRequest(UBLEScanRequest* Request);
 
+	void HandleTransportDeviceFound(const FBLEScanResult& result);
+	void HandleTransportConnectionComplete(const FString& DeviceId, bool bSuccess);
+
 private:
 	void StartScan();
-	
 	void StopScan();
 
-	void HandleTransportDeviceFound(const FBLEScanResult& result);
 private:
 	TUniquePtr<IBLETransport> Transport;
 

@@ -32,6 +32,20 @@ private:
 		return FString::Printf(TEXT("%012llx"), BluetoothAddress);
 	}
 
+	inline uint64_t ParseDeviceIdString(const FString& DeviceId)
+	{
+		return FCString::Strtoui64(*DeviceId, nullptr, 16);
+	}
+
+	struct FConnectedDeviceEntry
+	{
+		BluetoothLEDevice Device{ nullptr };
+		TMap<FString /*Normalize device UUID entry*/, GattDeviceService> Services;
+	};
+
+private:
+	void DiscoverServicesAndComplete(BluetoothLEDevice Device, const FString& DeviceId);
+
 private:
 	/*	Callbacks	*/
 	void OnAdvertisementReceived(
@@ -39,11 +53,9 @@ private:
 		BluetoothLEAdvertisementReceivedEventArgs const& args
 	);
 
-	void OnConnectionComplete(BluetoothLEDevice device);
-
 private:
 	BluetoothLEAdvertisementWatcher AdvertisementWatcher;
 	event_token AdvertisementReceivedToken;
 
-	TMap<FString, GattCharacteristic> CharacteristicsRegistry;
+	TMap<FString /*DeviceId*/, FConnectedDeviceEntry> ConnectedDevices;
 };
