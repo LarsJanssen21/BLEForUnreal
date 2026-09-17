@@ -57,7 +57,11 @@ private:
 	BluetoothLEAdvertisementWatcher AdvertisementWatcher;
 	event_token AdvertisementReceivedToken;
 
+	UPROPERTY()
 	TMap<FString /*DeviceId*/, FConnectedDeviceEntry> ConnectedDevices;
 
 	TSet<FString> PendingConnections;
+
+	const uint32_t GattStatusReconnectAttempts = 3;
+	const uint32_t GattStatusReconnectDelayMs = 1000;
 };

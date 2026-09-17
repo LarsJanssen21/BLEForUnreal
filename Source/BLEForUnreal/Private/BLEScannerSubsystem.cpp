@@ -44,7 +44,7 @@ void UBLEScannerSubsystem::Deinitialize()
 
 UBLEScanRequest* UBLEScannerSubsystem::StartFilteredScan(EBLEDeviceCategory Category)
 {
-	UBLEScanRequest* Request = NewObject<UBLEScanRequest>();
+	UBLEScanRequest* Request = NewObject<UBLEScanRequest>(this);
 	Request->Category = Category;
 	Request->OwningSubsystem = this;
 	Request->IsMarkedStale = false;

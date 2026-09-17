@@ -1,3 +1,6 @@
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+
 #include "BLETransport_Win.h"
 
 #include "BLETypes.h"
@@ -10,6 +13,7 @@
 #include "winrt/windows.devices.bluetooth.h"
 
 #include "CoreMinimal.h"
+
 
 BLETransportWindows::BLETransportWindows()
 {
@@ -66,6 +70,20 @@ void BLETransportWindows::ConnectToDevice(const FString& DeviceId)
 			// TODO: Handle AsyncStatus 
 			BluetoothLEDevice Device = { nullptr };
 
+			if (Status != AsyncStatus::Completed)
+			{
+				HANDLE Signal = CreateEvent(nullptr, true, false, nullptr);
+
+				Op.Completed([&](auto&&, auto&&)
+					{
+						SetEvent(Signal);
+					}
+				);
+
+				WaitForSingleObject(Signal, INFINITE);
+			}
+
+
 			if (Status == AsyncStatus::Completed)
 			{
 				Device = Op.GetResults();
@@ -91,19 +109,53 @@ void BLETransportWindows::DiscoverServicesAndComplete(BluetoothLEDevice Device, 
 	Device.GetGattServicesAsync(BluetoothCacheMode::Uncached).Completed(
 		[this, Device, DeviceId](IAsyncOperation<GattDeviceServicesResult> const& Op, AsyncStatus Status)
 		{
+			/*
 			const bool bDiscovereySucceeded =
 				Status == AsyncStatus::Completed
 				&& Op.GetResults().Status() == GattCommunicationStatus::Success;
+				*/
+
+			if (Status != AsyncStatus::Completed)
+			{
+				HANDLE Signal = CreateEvent(nullptr, true, false, nullptr);
+
+				Op.Completed([&](auto&&, auto&&)
+					{
+						SetEvent(Signal);
+					}
+				);
+				
+				WaitForSingleObject(Signal, INFINITE);
+			}
+
+			GattCommunicationStatus GattStatus = Op.GetResults().Status();
+			bool bDiscovereySucceeded = GattStatus == GattCommunicationStatus::Success;
 
 			if (!bDiscovereySucceeded)
 			{
-				AsyncTask(ENamedThreads::GameThread, [this, DeviceId]()
+				if (GattStatus == GattCommunicationStatus::Unreachable)
+				{
+					for (uint32_t i = 0; i < GattStatusReconnectAttempts; i++)
 					{
-						PendingConnections.Remove(DeviceId);
-						OnConnectComplete.ExecuteIfBound(DeviceId, false);
+						std::this_thread::sleep_for(std::chrono::milliseconds(GattStatusReconnectDelayMs));
+						if (Op.GetResults().Status() == GattCommunicationStatus::Success)
+						{
+							bDiscovereySucceeded = true;
+							continue;
+						}
 					}
-				);
-				return;
+				}
+
+				if (!bDiscovereySucceeded)
+				{
+					AsyncTask(ENamedThreads::GameThread, [this, DeviceId]()
+						{
+							PendingConnections.Remove(DeviceId);
+							OnConnectComplete.ExecuteIfBound(DeviceId, false);
+						}
+					);
+					return;
+				}
 			}
 
 			FConnectedDeviceEntry Entry;
