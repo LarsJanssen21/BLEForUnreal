@@ -18,7 +18,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnBLEDeviceConnected, UBLEDevice*,
  * 
  */
 UCLASS()
-class BLEFORUNREAL_API UBLEScannerSubsystem : public UEngineSubsystem
+class BLEFORUNREAL_API UBLEScannerSubsystem : public UGameInstanceSubsystem
 {
 	GENERATED_BODY()
 
