@@ -41,6 +41,24 @@ void BLETransportWindows::StopScan()
 
 void BLETransportWindows::ConnectToDevice(const FString& DeviceId)
 {
+	if (ConnectedDevices.Contains(DeviceId))
+	{
+		AsyncTask(ENamedThreads::GameThread, [this, DeviceId]()
+			{
+				OnConnectComplete.ExecuteIfBound(DeviceId, true);
+			}
+		);
+	}
+
+	if (PendingConnections.Contains(DeviceId))
+	{
+		// Connect request for this device is already in flight.
+		// Original request will still fire OnConnectComplete 
+		return;
+	}
+
+	PendingConnections.Add(DeviceId);
+
 	uint64_t ParsedAddress = FCString::Strtoui64(*DeviceId, nullptr, 16);
 	
 	BluetoothLEDevice::FromBluetoothAddressAsync(ParsedAddress).Completed([this, DeviceId](IAsyncOperation<BluetoothLEDevice> const& Op, AsyncStatus Status)
@@ -57,6 +75,7 @@ void BLETransportWindows::ConnectToDevice(const FString& DeviceId)
 			{
 				AsyncTask(ENamedThreads::GameThread, [this, DeviceId]()
 					{
+						PendingConnections.Remove(DeviceId);
 						OnConnectComplete.ExecuteIfBound(DeviceId, false);
 					}
 				);
@@ -80,6 +99,7 @@ void BLETransportWindows::DiscoverServicesAndComplete(BluetoothLEDevice Device, 
 			{
 				AsyncTask(ENamedThreads::GameThread, [this, DeviceId]()
 					{
+						PendingConnections.Remove(DeviceId);
 						OnConnectComplete.ExecuteIfBound(DeviceId, false);
 					}
 				);
@@ -103,6 +123,7 @@ void BLETransportWindows::DiscoverServicesAndComplete(BluetoothLEDevice Device, 
 
 			AsyncTask(ENamedThreads::GameThread, [this, DeviceId, DiscoveredServiceUuids = MoveTemp(DiscoveredServiceUuids)]
 				{
+					PendingConnections.Remove(DeviceId);
 					OnConnectComplete.ExecuteIfBound(DeviceId, true);
 				}
 			);

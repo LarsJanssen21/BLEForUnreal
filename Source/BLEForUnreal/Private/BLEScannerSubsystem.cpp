@@ -30,6 +30,11 @@ void UBLEScannerSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 
 void UBLEScannerSubsystem::Deinitialize()
 {
+	for (UBLEScanRequest* Request : ScanRequests)
+	{
+		UnregisterScanRequest(Request);
+	}
+
 	StopScan();
 
 	Transport.Reset();
@@ -88,7 +93,16 @@ void UBLEScannerSubsystem::HandleTransportDeviceFound(const FBLEScanResult& Resu
 
 void UBLEScannerSubsystem::HandleTransportConnectionComplete(const FString& DeviceId, bool bSuccess)
 {
-	
+	UBLEDevice* Device = nullptr;
+
+	if (bSuccess)
+	{
+		Device = NewObject<UBLEDevice>(this);
+		Device->Initialize(DeviceId, Transport.Get());
+		ConnectedDevices.Add(Device);
+	}
+
+	OnDeviceConnected.Broadcast(Device, bSuccess);
 }
 
 void UBLEScannerSubsystem::StartScan()

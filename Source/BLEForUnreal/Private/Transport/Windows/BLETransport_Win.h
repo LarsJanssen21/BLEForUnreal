@@ -58,4 +58,6 @@ private:
 	event_token AdvertisementReceivedToken;
 
 	TMap<FString /*DeviceId*/, FConnectedDeviceEntry> ConnectedDevices;
+
+	TSet<FString> PendingConnections;
 };
