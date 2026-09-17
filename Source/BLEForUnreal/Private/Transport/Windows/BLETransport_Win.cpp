@@ -1,7 +1,7 @@
+#include "BLETransport_Win.h"
+
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
-
-#include "BLETransport_Win.h"
 
 #include "BLETypes.h"
 #include "BLEScannerSubsystem.h"
@@ -52,6 +52,8 @@ void BLETransportWindows::ConnectToDevice(const FString& DeviceId)
 				OnConnectComplete.ExecuteIfBound(DeviceId, true);
 			}
 		);
+
+		return;
 	}
 
 	if (PendingConnections.Contains(DeviceId))

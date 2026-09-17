@@ -32,11 +32,6 @@ private:
 		return FString::Printf(TEXT("%012llx"), BluetoothAddress);
 	}
 
-	inline uint64_t ParseDeviceIdString(const FString& DeviceId)
-	{
-		return FCString::Strtoui64(*DeviceId, nullptr, 16);
-	}
-
 	struct FConnectedDeviceEntry
 	{
 		BluetoothLEDevice Device{ nullptr };
