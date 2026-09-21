@@ -45,6 +45,13 @@ private:
 private:
 	void DiscoverServicesAndComplete(BluetoothLEDevice Device, const FString& DeviceId);
 
+	void EnableNotifications(const FString& DeviceId, 
+		const FString& CharacteristicUuid, GattCharacteristic Characteristic);
+
+	TOptional<GattCharacteristic> FindOrDiscoverCharacteristic(const FString& DeviceId,
+		const FString& ServiceUuid, const FString& CharacteristicUuid
+	);
+
 private:
 	/*	Callbacks	*/
 	void OnAdvertisementReceived(
@@ -53,11 +60,14 @@ private:
 	);
 
 private:
-	BluetoothLEAdvertisementWatcher AdvertisementWatcher;
-	event_token AdvertisementReceivedToken;
-
 	UPROPERTY()
 	TMap<FString /*DeviceId*/, FConnectedDeviceEntry> ConnectedDevices;
+
+	TMap<FString /*normalized characteristic UUID*/, GattCharacteristic> CachedCharacteristics;
+
+
+	BluetoothLEAdvertisementWatcher AdvertisementWatcher;
+	event_token AdvertisementReceivedToken;
 
 	TSet<FString> PendingConnections;
 

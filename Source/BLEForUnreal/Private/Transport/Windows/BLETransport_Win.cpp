@@ -11,6 +11,7 @@
 #include "winrt/windows.foundation.h"
 #include "winrt/windows.foundation.collections.h"
 #include "winrt/windows.devices.bluetooth.h"
+#include "winrt/windows.storage.streams.h"
 
 #include "CoreMinimal.h"
 
@@ -126,7 +127,55 @@ void BLETransportWindows::Disconnect(const FString& DeviceId)
 void BLETransportWindows::SubscribeToCharacteristic(const FString& DeviceId,
 	const FString& ServiceUuid, const FString& CharUuid)
 {
+	const FString NormalizedServiceUuid = BLEUuid::Normalize(ServiceUuid);
+	const FString NormalizedCharUuid = BLEUuid::Normalize(CharUuid);
 
+	FConnectedDeviceEntry* Entry = ConnectedDevices.Find(DeviceId);
+	if (!Entry)
+	{
+		return;
+	}
+
+	GattDeviceService* Service = Entry->Services.Find(NormalizedServiceUuid);
+	if (!Service)
+	{
+		return;
+	}
+
+
+	const FString CacheKey = DeviceId + TEXT("|") + NormalizedCharUuid;
+	Service->GetCharacteristicsForUuidAsync(
+		winrt::guid(TCHAR_TO_UTF8(*NormalizedCharUuid)), BluetoothCacheMode::Uncached)
+		.Completed(
+			[this, DeviceId, NormalizedServiceUuid, NormalizedCharUuid, CacheKey]
+			(IAsyncOperation<GattCharacteristicsResult> const& Op, AsyncStatus Status)
+			{
+				if (Status != AsyncStatus::Completed)
+				{
+					HANDLE Signal = CreateEvent(nullptr, true, false, nullptr);
+
+					Op.Completed([&](auto&&, auto&&)
+						{
+							SetEvent(Signal);
+						}
+					);
+
+					WaitForSingleObject(Signal, INFINITE);
+				}
+
+				if (Op.GetResults().Status() != GattCommunicationStatus::Success ||
+					Op.GetResults().Characteristics().Size() == 0)
+				{
+					// Characteristics genuinely doesn't exist on this device, nothing to subscribe to
+					return;
+				}
+
+				GattCharacteristic Characteristic = Op.GetResults().Characteristics().GetAt(0);
+				CachedCharacteristics.Add(CacheKey, Characteristic);
+
+				EnableNotifications(DeviceId, NormalizedCharUuid, Characteristic);
+			}
+		);
 }
 
 void BLETransportWindows::DiscoverServicesAndComplete(BluetoothLEDevice Device, const FString& DeviceId)
@@ -201,6 +250,58 @@ void BLETransportWindows::DiscoverServicesAndComplete(BluetoothLEDevice Device, 
 			);
 		}
 	);
+}
+
+void BLETransportWindows::EnableNotifications(const FString& DeviceId,
+	const FString& CharacteristicUuid, GattCharacteristic Characteristic)
+{
+	// Register the byte-level callback BEFORE writing the cccd - some
+	// stacks can fire the first notification faster than you'd expect
+	// once the descriptor write completes.
+
+	Characteristic.ValueChanged(
+		[this, DeviceId, CharacteristicUuid]
+		(GattCharacteristic const&, GattValueChangedEventArgs const& Args)
+		{
+			auto Reader = winrt::Windows::Storage::Streams::DataReader::FromBuffer(Args.CharacteristicValue());
+			FBLECharacteristicData Data;
+			Data.SetNumUninitialized(Reader.UnconsumedBufferLength());
+			Reader.ReadBytes(winrt::array_view<uint8>(Data.GetData(), Data.Num()));
+
+			AsyncTask(ENamedThreads::GameThread, [this, DeviceId, CharacteristicUuid, Data = MoveTemp(Data)]()
+				{
+					OnCharacteristicUpdated.ExecuteIfBound(DeviceId, CharacteristicUuid, Data);
+				}
+			);
+			// TODO Marshal to game thread and execute callback
+		}
+	);
+
+	Characteristic.WriteClientCharacteristicConfigurationDescriptorAsync(
+		GattClientCharacteristicConfigurationDescriptorValue::Notify)
+		.Completed(
+			[this, DeviceId, CharacteristicUuid]
+			(IAsyncOperation<GattCommunicationStatus> const& Op, AsyncStatus Status)
+			{
+				if (Status != AsyncStatus::Completed)
+				{
+					HANDLE Signal = CreateEvent(nullptr, true, false, nullptr);
+
+					Op.Completed([&](auto&&, auto&&)
+						{
+							SetEvent(Signal);
+						}
+					);
+
+					WaitForSingleObject(Signal, INFINITE);
+				}
+
+				if (Op.GetResults() != GattCommunicationStatus::Success)
+				{
+					UE_LOG(LogTemp, Warning, TEXT("Temporary not succesfull"));
+				}
+			}
+		);
 }
 
 void BLETransportWindows::OnAdvertisementReceived(

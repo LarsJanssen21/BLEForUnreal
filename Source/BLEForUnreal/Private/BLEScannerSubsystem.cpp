@@ -2,7 +2,6 @@
 
 #include "BLEScannerSubsystem.h"
 
-#include "IBLETransport.h"
 #include "BLEScanRequest.h"
 
 UBLEScannerSubsystem::UBLEScannerSubsystem() = default;
@@ -25,6 +24,7 @@ void UBLEScannerSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	{
 		Transport->OnDeviceFound.BindUObject(this, &UBLEScannerSubsystem::HandleTransportDeviceFound);
 		Transport->OnConnectComplete.BindUObject(this, &UBLEScannerSubsystem::HandleTransportConnectionComplete);
+		Transport->OnCharacteristicUpdated.BindUObject(this, &UBLEScannerSubsystem::HandleTransportCharacteristicUpdated);
 	}
 }
 
@@ -105,6 +105,23 @@ void UBLEScannerSubsystem::HandleTransportConnectionComplete(const FString& Devi
 	}
 
 	OnDeviceConnected.Broadcast(Device, bSuccess);
+}
+
+void UBLEScannerSubsystem::HandleTransportCharacteristicUpdated(const FString& DeviceId,
+	const FString& CharacteristicUuid,
+	const FBLECharacteristicData& Data)
+{
+	// OnCharacteristicUpdated is transport-wide — every connected device's
+	// notifications arrive through this ONE bound callback, regardless of
+	// which physical peripheral they came from. Find the UBLEDevice this
+	// packet actually belongs to before handing the bytes off.
+	for (UBLEDevice* Device : ConnectedDevices)
+	{
+		if (Device && Device->GetDeviceId() == DeviceId)
+		{
+			Device->HandleCharacteristicData(CharacteristicUuid, Data);
+		}
+	}
 }
 
 void UBLEScannerSubsystem::StartScan()

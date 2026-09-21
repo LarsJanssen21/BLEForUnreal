@@ -20,7 +20,7 @@ TArray<FName> FHeartRateParser::GetSupportedMetrics() const
 
 TArray<FBLEMetric> FHeartRateParser::Parse(const TArray<uint8>& Data)
 {
-	return {};
+	return { {BLEMetricNames::HeartRateBpm, 20.0f} };
 }
 
 void FHeartRateParser::Reset()

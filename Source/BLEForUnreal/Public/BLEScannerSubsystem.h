@@ -6,6 +6,7 @@
 
 #include "BLEDevice.h"
 #include "BLETypes.h"
+#include "IBLETransport.h"
 
 #include "BLEScannerSubsystem.generated.h"
 
@@ -46,7 +47,9 @@ public:
 	void HandleTransportConnectionComplete(const FString& DeviceId, 
 		const TArray<FString>& DiscoveredServiceUuids, 
 		bool bSuccess);
-
+	void HandleTransportCharacteristicUpdated(const FString& DeviceId,
+		const FString& CharacteristicUuid,
+		const FBLECharacteristicData& Data);
 private:
 	void StartScan();
 	void StopScan();

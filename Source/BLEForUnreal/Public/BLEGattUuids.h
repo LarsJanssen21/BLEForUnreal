@@ -4,7 +4,7 @@
 
 namespace BLEGattUuids {
 
-	const FString HeartRateService = FString("180d");
-	const FString HeartRateMeasurement = FString("2a37");
+	const FString HeartRateService = FString(TEXT("2a37"));
+	const FString HeartRateMeasurement = FString(TEXT("180d"));
 
 }

@@ -4,11 +4,14 @@
 
 #include "CoreMinimal.h"
 
+#include "IBLETransport.h"
 
 #include "BLEDevice.generated.h"
 
-class IBLETransport;
+
 class IBLECharacteristicParser;
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnMetricUpdated, FName, MetricName, float, Value);
 
 /**
  * 
@@ -36,7 +39,13 @@ public:
 	TArray<FName> GetAvailableMetrics() const;
 
 	UFUNCTION(BlueprintCallable, Category="BLE")
-	bool SubscribeToMetric(const FName& MetricName);
+	bool SubscribeToMetric(FName MetricName);
+
+	UPROPERTY(BlueprintAssignable, Category="BLE")
+	FOnMetricUpdated OnMetricUpdated;
+
+
+	void HandleCharacteristicData(const FString& CharacteristicUuid, const FBLECharacteristicData& Data);
 
 private:
 	UPROPERTY()
@@ -50,4 +59,6 @@ private:
 
 	TMap<FName, IBLECharacteristicParser*> AvailableParsers; // Metric name --> Parser
 	TMap<FString, IBLECharacteristicParser*> ActiveParsers; // Characteristic UUID -> Parser
+
+	TMap<FName, float> LatestMetricValues;
 };

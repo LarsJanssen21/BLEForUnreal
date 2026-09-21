@@ -43,7 +43,7 @@ TArray<FName> UBLEDevice::GetAvailableMetrics() const
 	return Result;
 }
 
-bool UBLEDevice::SubscribeToMetric(const FName& MetricName)
+bool UBLEDevice::SubscribeToMetric(FName MetricName)
 {
 	IBLECharacteristicParser* const* FoundParser = AvailableParsers.Find(MetricName);
 	if (!FoundParser || !Transport)
@@ -62,4 +62,19 @@ bool UBLEDevice::SubscribeToMetric(const FName& MetricName)
 	}
 
 	return true;
+}
+
+void UBLEDevice::HandleCharacteristicData(const FString& CharacteristicUuid, const FBLECharacteristicData& Data)
+{
+	IBLECharacteristicParser* const* FoundParser = ActiveParsers.Find(CharacteristicUuid);
+	if (!FoundParser)
+	{
+		return;
+	}
+
+	for (const FBLEMetric& Metric : (*FoundParser)->Parse(Data))
+	{
+		LatestMetricValues.Add(Metric.MetricName, Metric.Value);
+		OnMetricUpdated.Broadcast(Metric.MetricName, Metric.Value);
+	}
 }
