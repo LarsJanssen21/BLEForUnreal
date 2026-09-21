@@ -43,7 +43,9 @@ public:
 	void UnregisterScanRequest(UBLEScanRequest* Request);
 
 	void HandleTransportDeviceFound(const FBLEScanResult& result);
-	void HandleTransportConnectionComplete(const FString& DeviceId, bool bSuccess);
+	void HandleTransportConnectionComplete(const FString& DeviceId, 
+		const TArray<FString>& DiscoveredServiceUuids, 
+		bool bSuccess);
 
 private:
 	void StartScan();

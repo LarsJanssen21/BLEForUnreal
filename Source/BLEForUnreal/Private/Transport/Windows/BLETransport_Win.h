@@ -25,6 +25,10 @@ public:
 	virtual void StopScan() override;
 
 	virtual void ConnectToDevice(const FString& DeviceId) override;
+	virtual void Disconnect(const FString& DeviceId) override;
+
+	virtual void SubscribeToCharacteristic(const FString& DeviceId,
+		const FString& ServiceUuid, const FString& CharUuid) override;
 
 private:
 	inline FString FormatDeviceId(uint64_t BluetoothAddress)

@@ -22,7 +22,10 @@ BLETransportWindows::BLETransportWindows()
 
 BLETransportWindows::~BLETransportWindows()
 {
-
+	for (const auto& [DeviceId, DeviceEntry] : ConnectedDevices)
+	{
+		DeviceEntry.Device.Close();
+	}
 }
 
 void BLETransportWindows::StartScan()
@@ -45,11 +48,16 @@ void BLETransportWindows::StopScan()
 
 void BLETransportWindows::ConnectToDevice(const FString& DeviceId)
 {
-	if (ConnectedDevices.Contains(DeviceId))
+	FConnectedDeviceEntry* Entry = ConnectedDevices.Find(DeviceId);
+	if (Entry)
 	{
-		AsyncTask(ENamedThreads::GameThread, [this, DeviceId]()
+		TArray<FString> DiscoveredServiceUuids;
+		Entry->Services.GenerateKeyArray(DiscoveredServiceUuids);
+
+		AsyncTask(ENamedThreads::GameThread, [this, DeviceId, 
+			DiscoveredServiceUuids = MoveTemp(DiscoveredServiceUuids)]()
 			{
-				OnConnectComplete.ExecuteIfBound(DeviceId, true);
+				OnConnectComplete.ExecuteIfBound(DeviceId, DiscoveredServiceUuids, true);
 			}
 		);
 
@@ -96,7 +104,7 @@ void BLETransportWindows::ConnectToDevice(const FString& DeviceId)
 				AsyncTask(ENamedThreads::GameThread, [this, DeviceId]()
 					{
 						PendingConnections.Remove(DeviceId);
-						OnConnectComplete.ExecuteIfBound(DeviceId, false);
+						OnConnectComplete.ExecuteIfBound(DeviceId, {}, false);
 					}
 				);
 				return;
@@ -104,6 +112,21 @@ void BLETransportWindows::ConnectToDevice(const FString& DeviceId)
 
 			DiscoverServicesAndComplete(Device, DeviceId);
 		});
+}
+
+void BLETransportWindows::Disconnect(const FString& DeviceId)
+{
+	FConnectedDeviceEntry* ConnectedDevice = ConnectedDevices.Find(DeviceId);
+	if (ConnectedDevice)
+	{
+		ConnectedDevice->Device.Close();
+	}
+}
+
+void BLETransportWindows::SubscribeToCharacteristic(const FString& DeviceId,
+	const FString& ServiceUuid, const FString& CharUuid)
+{
+
 }
 
 void BLETransportWindows::DiscoverServicesAndComplete(BluetoothLEDevice Device, const FString& DeviceId)
@@ -147,7 +170,7 @@ void BLETransportWindows::DiscoverServicesAndComplete(BluetoothLEDevice Device, 
 					AsyncTask(ENamedThreads::GameThread, [this, DeviceId]()
 						{
 							PendingConnections.Remove(DeviceId);
-							OnConnectComplete.ExecuteIfBound(DeviceId, false);
+							OnConnectComplete.ExecuteIfBound(DeviceId, {}, false);
 						}
 					);
 					return;
@@ -164,6 +187,7 @@ void BLETransportWindows::DiscoverServicesAndComplete(BluetoothLEDevice Device, 
 				if (!NormalizedUuid.IsEmpty())
 				{
 					Entry.Services.Add(NormalizedUuid, Service);
+					DiscoveredServiceUuids.Add(NormalizedUuid);
 				}
 			}
 
@@ -172,7 +196,7 @@ void BLETransportWindows::DiscoverServicesAndComplete(BluetoothLEDevice Device, 
 			AsyncTask(ENamedThreads::GameThread, [this, DeviceId, DiscoveredServiceUuids = MoveTemp(DiscoveredServiceUuids)]
 				{
 					PendingConnections.Remove(DeviceId);
-					OnConnectComplete.ExecuteIfBound(DeviceId, true);
+					OnConnectComplete.ExecuteIfBound(DeviceId, DiscoveredServiceUuids, true);
 				}
 			);
 		}

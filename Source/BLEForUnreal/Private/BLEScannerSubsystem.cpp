@@ -91,14 +91,16 @@ void UBLEScannerSubsystem::HandleTransportDeviceFound(const FBLEScanResult& Resu
 	}
 }
 
-void UBLEScannerSubsystem::HandleTransportConnectionComplete(const FString& DeviceId, bool bSuccess)
+void UBLEScannerSubsystem::HandleTransportConnectionComplete(const FString& DeviceId, 
+	const TArray<FString>& DiscoveredServiceUuids,
+	bool bSuccess)
 {
 	UBLEDevice* Device = nullptr;
 
 	if (bSuccess)
 	{
 		Device = NewObject<UBLEDevice>(this);
-		Device->Initialize(DeviceId, Transport.Get());
+		Device->Initialize(DeviceId, Transport.Get(), DiscoveredServiceUuids);
 		ConnectedDevices.Add(Device);
 	}
 

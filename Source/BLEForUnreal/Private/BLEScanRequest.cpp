@@ -3,6 +3,7 @@
 #include "BLEScannerSubsystem.h"
 
 #include "BLEUuid.h"
+#include "BLEGattUuids.h"
 
 void UBLEScanRequest::StopScan()
 {
@@ -26,7 +27,7 @@ bool UBLEScanRequest::MatchesFilter(const FBLEScanResult& Result) const
 		{
 			case EBLEDeviceCategory::HeartRate:
 			{
-				FString ServiceGUID = BLEUuid::Normalize(BLEUuid::ExpandShortUuidString(BLEUuid::HeartRateServiceUUID));
+				FString ServiceGUID = BLEUuid::Normalize(BLEGattUuids::HeartRateService);
 				if (BLEUuid::AreEqual(ServiceGUID, service))
 				{
 					return true;
