@@ -20,7 +20,26 @@ TArray<FName> FHeartRateParser::GetSupportedMetrics() const
 
 TArray<FBLEMetric> FHeartRateParser::Parse(const TArray<uint8>& Data)
 {
-	return { {BLEMetricNames::HeartRateBpm, 20.0f} };
+	float HeartRate = 0.0f;
+
+	const uint8_t* BasePtr = Data.GetData();
+	if (BasePtr)
+	{
+		uint8_t FlagsField = BasePtr[0];
+
+		const void* HeartRateMeasurementField = static_cast<const void*>(&BasePtr[1]);
+
+		if ((FlagsField & 0x1) != 0)
+		{
+			HeartRate = static_cast<float>(*static_cast<const uint16_t*>(HeartRateMeasurementField));
+		}
+		else
+		{
+			HeartRate = static_cast<float>(*static_cast<const uint8_t*>(HeartRateMeasurementField));
+		}
+	}
+
+	return { {BLEMetricNames::HeartRateBpm, HeartRate} };
 }
 
 void FHeartRateParser::Reset()

@@ -312,9 +312,14 @@ void BLETransportWindows::OnAdvertisementReceived(
 	Result.DeviceId = FormatDeviceId(Args.BluetoothAddress());
 	Result.DeviceLocalName = winrt::to_hstring(Args.Advertisement().LocalName()).c_str();
 
+	if (Result.DeviceLocalName.Equals("Instinct Crossover"))
+	{
+		Result.DeviceLocalName.Append(" ");
+	}
+
 	for (const winrt::guid& uuid : Args.Advertisement().ServiceUuids())
 	{
-		Result.AdvertisedServices.Add(FString(winrt::to_hstring(uuid).c_str()));
+		Result.AdvertisedServices.Add(BLEUuid::Normalize(FString(winrt::to_hstring(uuid).c_str())));
 	}
 
 	// Marshal back to the game thread

@@ -14,7 +14,7 @@ struct FBLEScanResult
 	FString DeviceLocalName;
 
 	UPROPERTY(BlueprintReadOnly)
-	TArray<FString> AdvertisedServices;
+	TArray<FString> AdvertisedServices; /* Canonical Normalize Service UUID*/
 };
 
 UENUM(BlueprintType)
