@@ -12,17 +12,7 @@ TArray<TUniquePtr<IBLECharacteristicParser>> CreateParsersForServices(
 {
 	TArray<TUniquePtr<IBLECharacteristicParser>> Result;
 
-	TSet<FString> NormalizedServiceUuids;
-	for (const auto& ServiceUuid : DiscoveredServiceUuids)
-	{
-		FString Normalized = BLEUuid::Normalize(ServiceUuid);
-		if (!Normalized.IsEmpty())
-		{
-			NormalizedServiceUuids.Add(Normalized);
-		}
-	}
-
-	if (NormalizedServiceUuids.Contains(BLEUuid::Normalize(BLEGattUuids::HeartRateService)))
+	if (DiscoveredServiceUuids.Contains(BLEGattUuids::HeartRateService))
 	{
 		Result.Add(MakeUnique<FHeartRateParser>());
 	}

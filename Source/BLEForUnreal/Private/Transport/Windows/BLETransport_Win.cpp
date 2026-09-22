@@ -127,8 +127,8 @@ void BLETransportWindows::Disconnect(const FString& DeviceId)
 void BLETransportWindows::SubscribeToCharacteristic(const FString& DeviceId,
 	const FString& ServiceUuid, const FString& CharUuid)
 {
-	const FString NormalizedServiceUuid = BLEUuid::Normalize(ServiceUuid);
-	const FString NormalizedCharUuid = BLEUuid::Normalize(CharUuid);
+	const FString NormalizedServiceUuid = ServiceUuid;
+	const FString NormalizedCharUuid = CharUuid;
 
 	FConnectedDeviceEntry* Entry = ConnectedDevices.Find(DeviceId);
 	if (!Entry)
