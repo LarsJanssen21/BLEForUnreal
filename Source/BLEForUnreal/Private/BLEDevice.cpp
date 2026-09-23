@@ -52,9 +52,12 @@ bool UBLEDevice::SubscribeToMetric(FName MetricName)
 	}
 
 	IBLECharacteristicParser* Parser = *FoundParser;
-
 	const FString CharUuid = Parser->GetCharacteristicUuid();
-	if (!ActiveParsers.Contains(CharUuid))
+
+	int32_t& Count = ParserSubscriberCount.FindOrAdd(CharUuid, 0);
+	Count++;
+
+	if (Count == 1)
 	{
 		Parser->Reset();
 		Transport->SubscribeToCharacteristic(DeviceId, Parser->GetServiceUuid(), CharUuid);
@@ -62,6 +65,33 @@ bool UBLEDevice::SubscribeToMetric(FName MetricName)
 	}
 
 	return true;
+}
+
+void UBLEDevice::UnsubscribeFromMetric(FName MetricName)
+{
+	IBLECharacteristicParser* const* FoundParser = AvailableParsers.Find(MetricName);
+	if (!FoundParser || !Transport)
+	{
+		return;
+	}
+
+	IBLECharacteristicParser* Parser = *FoundParser;
+	const FString CharUuid = Parser->GetCharacteristicUuid();
+
+	int32_t* Count = ParserSubscriberCount.Find(CharUuid);
+
+	if (!Count || (*Count) <= 0)
+	{
+		return;
+	}
+
+	(*Count)--;
+
+	if ((*Count) == 0)
+	{
+		Transport->UnsubscribeFromCharacteristic(DeviceId, Parser->GetServiceUuid(), CharUuid);
+		ActiveParsers.Remove(CharUuid);
+	}
 }
 
 void UBLEDevice::HandleCharacteristicData(const FString& CharacteristicUuid, const FBLECharacteristicData& Data)

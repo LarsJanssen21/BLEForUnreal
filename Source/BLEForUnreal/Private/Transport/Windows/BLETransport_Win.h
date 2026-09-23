@@ -30,6 +30,9 @@ public:
 	virtual void SubscribeToCharacteristic(const FString& DeviceId,
 		const FString& ServiceUuid, const FString& CharUuid) override;
 
+	virtual void UnsubscribeFromCharacteristic(const FString& DeviceId,
+		const FString& ServiceUuid, const FString& CharUuid) override;
+
 private:
 	inline FString FormatDeviceId(uint64_t BluetoothAddress)
 	{
@@ -43,6 +46,8 @@ private:
 	};
 
 private:
+	FString ComposeCharacteristicCacheKey(FString DeviceId, FString NormalizedCharUuid);
+
 	void DiscoverServicesAndComplete(BluetoothLEDevice Device, const FString& DeviceId);
 
 	void EnableNotifications(const FString& DeviceId, 
@@ -63,8 +68,8 @@ private:
 	UPROPERTY()
 	TMap<FString /*DeviceId*/, FConnectedDeviceEntry> ConnectedDevices;
 
-	TMap<FString /*normalized characteristic UUID*/, GattCharacteristic> CachedCharacteristics;
-
+	TMap<FString /*Cache key*/, GattCharacteristic> CachedCharacteristics;
+	TMap<FString /*Cache key*/, winrt::event_token> NotificationTokens;
 
 	BluetoothLEAdvertisementWatcher AdvertisementWatcher;
 	event_token AdvertisementReceivedToken;

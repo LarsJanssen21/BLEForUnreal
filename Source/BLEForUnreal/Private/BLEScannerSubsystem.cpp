@@ -61,6 +61,15 @@ UBLEScanRequest* UBLEScannerSubsystem::StartFilteredScan(EBLEDeviceCategory Cate
 
 void UBLEScannerSubsystem::ConnectToDevice(const FString& DeviceId)
 {
+	for (UBLEDevice* ExistingDevice : ConnectedDevices)
+	{
+		if (ExistingDevice && ExistingDevice->GetDeviceId() == DeviceId)
+		{
+			OnDeviceConnected.Broadcast(ExistingDevice, true);
+			return;
+		}
+	}
+
 	if (Transport.IsValid())
 	{
 		Transport->ConnectToDevice(DeviceId);

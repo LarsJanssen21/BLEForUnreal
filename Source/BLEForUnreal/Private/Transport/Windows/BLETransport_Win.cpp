@@ -127,8 +127,13 @@ void BLETransportWindows::Disconnect(const FString& DeviceId)
 void BLETransportWindows::SubscribeToCharacteristic(const FString& DeviceId,
 	const FString& ServiceUuid, const FString& CharUuid)
 {
-	const FString NormalizedServiceUuid = ServiceUuid;
-	const FString NormalizedCharUuid = CharUuid;
+	const FString CacheKey = ComposeCharacteristicCacheKey(DeviceId, CharUuid);
+
+	if (GattCharacteristic* Characteristic = CachedCharacteristics.Find(CacheKey))
+	{
+		EnableNotifications(DeviceId, CharUuid, *Characteristic);
+		return;
+	}
 
 	FConnectedDeviceEntry* Entry = ConnectedDevices.Find(DeviceId);
 	if (!Entry)
@@ -136,18 +141,16 @@ void BLETransportWindows::SubscribeToCharacteristic(const FString& DeviceId,
 		return;
 	}
 
-	GattDeviceService* Service = Entry->Services.Find(NormalizedServiceUuid);
+	GattDeviceService* Service = Entry->Services.Find(ServiceUuid);
 	if (!Service)
 	{
 		return;
 	}
 
-
-	const FString CacheKey = DeviceId + TEXT("|") + NormalizedCharUuid;
 	Service->GetCharacteristicsForUuidAsync(
-		winrt::guid(TCHAR_TO_UTF8(*NormalizedCharUuid)), BluetoothCacheMode::Uncached)
+		winrt::guid(TCHAR_TO_UTF8(*CharUuid)), BluetoothCacheMode::Uncached)
 		.Completed(
-			[this, DeviceId, NormalizedServiceUuid, NormalizedCharUuid, CacheKey]
+			[this, DeviceId, ServiceUuid, CharUuid, CacheKey]
 			(IAsyncOperation<GattCharacteristicsResult> const& Op, AsyncStatus Status)
 			{
 				if (Status != AsyncStatus::Completed)
@@ -173,10 +176,38 @@ void BLETransportWindows::SubscribeToCharacteristic(const FString& DeviceId,
 				GattCharacteristic Characteristic = Op.GetResults().Characteristics().GetAt(0);
 				CachedCharacteristics.Add(CacheKey, Characteristic);
 
-				EnableNotifications(DeviceId, NormalizedCharUuid, Characteristic);
+				EnableNotifications(DeviceId, CharUuid, Characteristic);
 			}
 		);
 }
+
+void BLETransportWindows::UnsubscribeFromCharacteristic(const FString& DeviceId,
+	const FString& ServiceUuid, const FString& CharUuid)
+{
+	const FString CacheKey = ComposeCharacteristicCacheKey(DeviceId, CharUuid);
+
+	GattCharacteristic* Characteristic = CachedCharacteristics.Find(CacheKey);
+	if (!Characteristic)
+	{
+		return;
+	}
+
+	if (winrt::event_token* Token = NotificationTokens.Find(CacheKey))
+	{
+		Characteristic->ValueChanged(*Token);
+		NotificationTokens.Remove(CacheKey);
+	}
+
+	Characteristic->WriteClientCharacteristicConfigurationDescriptorAsync(
+		GattClientCharacteristicConfigurationDescriptorValue::None);
+}
+
+FString BLETransportWindows::ComposeCharacteristicCacheKey(
+	FString DeviceId, FString NormalizedCharUuid)
+{
+	return DeviceId + TEXT("|") + NormalizedCharUuid;
+}
+
 
 void BLETransportWindows::DiscoverServicesAndComplete(BluetoothLEDevice Device, const FString& DeviceId)
 {
@@ -255,11 +286,12 @@ void BLETransportWindows::DiscoverServicesAndComplete(BluetoothLEDevice Device, 
 void BLETransportWindows::EnableNotifications(const FString& DeviceId,
 	const FString& CharacteristicUuid, GattCharacteristic Characteristic)
 {
+	FString CacheKey = ComposeCharacteristicCacheKey(DeviceId, CharacteristicUuid);
+
 	// Register the byte-level callback BEFORE writing the cccd - some
 	// stacks can fire the first notification faster than you'd expect
 	// once the descriptor write completes.
-
-	Characteristic.ValueChanged(
+	winrt::event_token Token = Characteristic.ValueChanged(
 		[this, DeviceId, CharacteristicUuid]
 		(GattCharacteristic const&, GattValueChangedEventArgs const& Args)
 		{
@@ -273,9 +305,10 @@ void BLETransportWindows::EnableNotifications(const FString& DeviceId,
 					OnCharacteristicUpdated.ExecuteIfBound(DeviceId, CharacteristicUuid, Data);
 				}
 			);
-			// TODO Marshal to game thread and execute callback
 		}
 	);
+
+	NotificationTokens.Add(CacheKey, Token);
 
 	Characteristic.WriteClientCharacteristicConfigurationDescriptorAsync(
 		GattClientCharacteristicConfigurationDescriptorValue::Notify)

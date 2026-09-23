@@ -57,6 +57,7 @@ private:
 private:
 	TUniquePtr<IBLETransport> Transport;
 
+	/* There should only ever be ONE device object per physical peripheral */
 	UPROPERTY()
 	TArray<UBLEDevice*> ConnectedDevices;
 

@@ -29,6 +29,9 @@ public:
 	virtual void SubscribeToCharacteristic(const FString& DeviceId,
 		const FString& ServiceUuid, const FString& CharUuid) = 0;
 
+	virtual void UnsubscribeFromCharacteristic(const FString& DeviceId,
+		const FString& ServiceUuid, const FString& CharUuid) = 0;
+
 	FONBLETransportDeviceFound OnDeviceFound;
 	FONBLEConnectComplete OnConnectComplete;
 	FONBLECharacteristicUpdated OnCharacteristicUpdated;

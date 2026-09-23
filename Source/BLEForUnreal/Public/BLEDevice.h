@@ -41,10 +41,15 @@ public:
 	UFUNCTION(BlueprintCallable, Category="BLE")
 	bool SubscribeToMetric(FName MetricName);
 
+	UFUNCTION(BlueprintCallable, Category="BLE")
+	void UnsubscribeFromMetric(FName MetricName);
+
 	UPROPERTY(BlueprintAssignable, Category="BLE")
 	FOnMetricUpdated OnMetricUpdated;
 
-
+	/*
+	 * Used by UBLEScannerSubsystem to pass through updates on subscribed characteristics
+	*/
 	void HandleCharacteristicData(const FString& CharacteristicUuid, const FBLECharacteristicData& Data);
 
 private:
@@ -59,6 +64,7 @@ private:
 
 	TMap<FName, IBLECharacteristicParser*> AvailableParsers; // Metric name --> Parser
 	TMap<FString, IBLECharacteristicParser*> ActiveParsers; // Characteristic UUID -> Parser
+	TMap<FString, int32_t> ParserSubscriberCount; // Characteristic UUID -> Subscriber Count
 
 	TMap<FName, float> LatestMetricValues;
 };
