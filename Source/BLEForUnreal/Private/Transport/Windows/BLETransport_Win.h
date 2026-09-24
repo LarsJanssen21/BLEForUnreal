@@ -33,6 +33,9 @@ public:
 	virtual void UnsubscribeFromCharacteristic(const FString& DeviceId,
 		const FString& ServiceUuid, const FString& CharUuid) override;
 
+	virtual void ReadCharacteristic(const FString& DeviceId,
+		const FString& ServiceUuid, const FString& CharUuid) override;
+
 private:
 	inline FString FormatDeviceId(uint64_t BluetoothAddress)
 	{

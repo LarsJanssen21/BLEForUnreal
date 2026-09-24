@@ -209,6 +209,48 @@ FString BLETransportWindows::ComposeCharacteristicCacheKey(
 }
 
 
+void BLETransportWindows::ReadCharacteristic(const FString& DeviceId,
+	const FString& ServiceUuid, const FString& CharUuid)
+{
+	const FString CacheKey = ComposeCharacteristicCacheKey(DeviceId, CharUuid);
+
+	GattCharacteristic* Characteristic = CachedCharacteristics.Find(CacheKey);
+	if (!Characteristic)
+	{
+		return;
+	}
+
+	// Important is that we can only ever support one read at a time, distributing if multiple callers arrive is up to us.
+	Characteristic->ReadValueAsync(BluetoothCacheMode::Uncached).Completed(
+		[this, DeviceId, CharUuid](IAsyncOperation<GattReadResult> const& Op, AsyncStatus Status)
+		{
+			if (Status != AsyncStatus::Completed)
+			{
+				HANDLE Signal = CreateEvent(nullptr, true, false, nullptr);
+
+				Op.Completed([&](auto&&, auto&&)
+					{
+						SetEvent(Signal);
+					}
+				);
+
+				WaitForSingleObject(Signal, INFINITE);
+			}
+
+			FBLECharacteristicData Data(
+				Op.GetResults().Value().data(),
+				Op.GetResults().Value().Length()
+			);
+
+			AsyncTask(ENamedThreads::GameThread, [this, DeviceId, CharUuid, Data = MoveTemp(Data)]()
+				{
+					OnReadRequestCompleted.ExecuteIfBound(DeviceId, CharUuid, Data);
+				}
+			);
+		}
+	);
+}
+
 void BLETransportWindows::DiscoverServicesAndComplete(BluetoothLEDevice Device, const FString& DeviceId)
 {
 	Device.GetGattServicesAsync(BluetoothCacheMode::Uncached).Completed(

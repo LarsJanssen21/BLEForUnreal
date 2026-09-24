@@ -11,6 +11,16 @@
 
 class IBLECharacteristicParser;
 class UBLEMetricSubscription;
+class UBLEReadRequest;
+
+USTRUCT()
+struct FReadArray
+{
+	GENERATED_BODY()
+
+	UPROPERTY()
+	TArray<TObjectPtr<UBLEReadRequest>> Array;
+};
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnMetricUpdated, FName, MetricName, float, Value);
 
@@ -42,6 +52,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category="BLE")
 	UBLEMetricSubscription* SubscribeToMetric(FName MetricName);
 
+	UFUNCTION(BlueprintCallable, Category="BLE")
+	UBLEReadRequest* RequestValueRead(FName ReadName);
+
 	/*
 	 * Used by UBLEScannerSubsystem to pass through updates on subscribed characteristics
 	*/
@@ -62,11 +75,15 @@ private:
 	// Sole owner of every parser this device could use
 	TArray<TUniquePtr<IBLECharacteristicParser>> OwnedParsers;
 
-	TMap<FName, IBLECharacteristicParser*> AvailableParsers; // Metric name --> Parser
+	TMap<FName, IBLECharacteristicParser*> AvailableParsersByMetric; // Metric name --> Parser
+	TMap<FName, IBLECharacteristicParser*> AvailableParsersByRead; // Read name --> Parser
 	TMap<FString, IBLECharacteristicParser*> ActiveParsers; // Characteristic UUID -> Parser
 	TMap<FString, int32_t> ParserSubscriberCount; // Characteristic UUID -> Subscriber Count
 
+	UPROPERTY()
 	TArray<TObjectPtr<UBLEMetricSubscription>> ActiveSubscriptions;
+	UPROPERTY()
+	TMap<FName, FReadArray> ReadRequests;
 
 	TMap<FName, float> LatestMetricValues;
 };

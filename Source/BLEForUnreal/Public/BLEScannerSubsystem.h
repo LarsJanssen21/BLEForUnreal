@@ -44,12 +44,19 @@ public:
 	void UnregisterScanRequest(UBLEScanRequest* Request);
 
 	void HandleTransportDeviceFound(const FBLEScanResult& result);
+
 	void HandleTransportConnectionComplete(const FString& DeviceId, 
 		const TArray<FString>& DiscoveredServiceUuids, 
 		bool bSuccess);
+
 	void HandleTransportCharacteristicUpdated(const FString& DeviceId,
 		const FString& CharacteristicUuid,
 		const FBLECharacteristicData& Data);
+
+	void HandleTransportReadRequestCompleted(const FString& DeviceId,
+		const FString& CharacteristicUuid,
+		const FBLECharacteristicData& Data);
+
 private:
 	void StartScan();
 	void StopScan();

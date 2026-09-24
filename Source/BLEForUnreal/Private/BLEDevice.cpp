@@ -6,6 +6,7 @@
 #include "Parser/BLEParserFactory.h"
 #include "Parser/IBLECharacteristicParser.h"
 #include "BLEMetricSubscription.h"
+#include "BLEReadRequest.h"
 
 UBLEDevice::UBLEDevice() = default;
 UBLEDevice::UBLEDevice(FVTableHelper& Helper) : Super(Helper) {}
@@ -24,7 +25,12 @@ void UBLEDevice::Initialize(const FString& InDeviceId, IBLETransport* InTranspor
 
 		for (const FName& MetricName : RawParser->GetSupportedMetrics())
 		{
-			AvailableParsers.Add({ MetricName, RawParser });
+			AvailableParsersByMetric.Add({ MetricName, RawParser });
+		}
+
+		for (const FName& ReadName : RawParser->GetSupportedReadRequests())
+		{
+			AvailableParsersByRead.Add({ ReadName, RawParser });
 		}
 	}
 }
@@ -40,13 +46,13 @@ void UBLEDevice::Disconnect()
 TArray<FName> UBLEDevice::GetAvailableMetrics() const
 {
 	TArray<FName> Result;
-	AvailableParsers.GenerateKeyArray(Result);
+	AvailableParsersByMetric.GenerateKeyArray(Result);
 	return Result;
 }
 
 UBLEMetricSubscription* UBLEDevice::SubscribeToMetric(FName MetricName)
 {
-	IBLECharacteristicParser* const* FoundParser = AvailableParsers.Find(MetricName);
+	IBLECharacteristicParser* const* FoundParser = AvailableParsersByMetric.Find(MetricName);
 	if (!FoundParser || !Transport)
 	{
 		return nullptr;
@@ -72,6 +78,29 @@ UBLEMetricSubscription* UBLEDevice::SubscribeToMetric(FName MetricName)
 	return Subscription;
 }
 
+UBLEReadRequest* UBLEDevice::RequestValueRead(FName ReadName)
+{
+	IBLECharacteristicParser* const* FoundParser = AvailableParsersByRead.Find(ReadName);
+	if (*FoundParser)
+	{
+		return nullptr;
+	}
+
+	UBLEReadRequest* Request = NewObject<UBLEReadRequest>(this);
+
+	TArray<TObjectPtr<UBLEReadRequest>>& RequestArray = ReadRequests.FindOrAdd(ReadName).Array;
+	RequestArray.Add(Request);
+	if (RequestArray.Num() == 1)
+	{
+		// Handle through the transport or subsystem?
+		// as the BLE spec states that only one request can be handled, others are discarded.
+		// At the OS level windows still queues internally. Should we rely on this behaviour?
+		// Or handle it in the subsystem to explicitly queue these operations?
+	}
+
+	return Request;
+}
+
 void UBLEDevice::HandleCharacteristicData(const FString& CharacteristicUuid, const FBLECharacteristicData& Data)
 {
 	IBLECharacteristicParser* const* FoundParser = ActiveParsers.Find(CharacteristicUuid);
@@ -80,15 +109,37 @@ void UBLEDevice::HandleCharacteristicData(const FString& CharacteristicUuid, con
 		return;
 	}
 
-	for (const FBLEMetric& Metric : (*FoundParser)->Parse(Data))
-	{
-		LatestMetricValues.Add(Metric.MetricName, Metric.Value);
+	IBLECharacteristicParser* Parser = *FoundParser;
 
-		for (UBLEMetricSubscription* Subscription : ActiveSubscriptions)
+	if (!Parser->GetSupportedMetrics().IsEmpty())
+	{
+		for (const FBLEMetric& Metric : (*FoundParser)->ParseNotify(Data))
 		{
-			if (Subscription && Subscription->GetMetricName() == Metric.MetricName)
+			LatestMetricValues.Add(Metric.MetricName, Metric.Value);
+
+			for (UBLEMetricSubscription* Subscription : ActiveSubscriptions)
 			{
-				Subscription->OnValueUpdated.Broadcast(Metric.Value);
+				if (Subscription && Subscription->GetMetricName() == Metric.MetricName)
+				{
+					Subscription->OnValueUpdated.Broadcast(Metric.Value);
+				}
+			}
+		}
+	}
+
+	if (!Parser->GetSupportedReadRequests().IsEmpty())
+	{
+		for (const FBLERead& Read : (*FoundParser)->ParseReadRequest(Data))
+		{
+			FReadArray* FoundRequestArray = ReadRequests.Find(Read.ReadName);
+			if (FoundRequestArray)
+			{
+				for (UBLEReadRequest* Request : (*FoundRequestArray).Array)
+				{
+					Request->OnRequestCompleted.Broadcast(Read.String);
+				}
+
+				ReadRequests.Remove(Read.ReadName);
 			}
 		}
 	}
@@ -103,7 +154,7 @@ void UBLEDevice::RemoveSubscription(UBLEMetricSubscription* Subscription)
 
 	ActiveSubscriptions.RemoveSingleSwap(Subscription);
 
-	IBLECharacteristicParser* const* FoundParser = AvailableParsers.Find(Subscription->GetMetricName());
+	IBLECharacteristicParser* const* FoundParser = AvailableParsersByMetric.Find(Subscription->GetMetricName());
 	if (!FoundParser || !Transport)
 	{
 		return;
@@ -115,7 +166,7 @@ void UBLEDevice::RemoveSubscription(UBLEMetricSubscription* Subscription)
 	bool bAnyRemaningSubscriptionsOnCharacteristic = 
 		ActiveSubscriptions.ContainsByPredicate([this, &CharUuid](const UBLEMetricSubscription* Other)
 		{
-			IBLECharacteristicParser* const* OtherParser = AvailableParsers.Find(Other->GetMetricName());
+			IBLECharacteristicParser* const* OtherParser = AvailableParsersByMetric.Find(Other->GetMetricName());
 			return OtherParser && (*OtherParser)->GetCharacteristicUuid() == CharUuid;
 		}
 	);

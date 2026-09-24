@@ -133,6 +133,13 @@ void UBLEScannerSubsystem::HandleTransportCharacteristicUpdated(const FString& D
 	}
 }
 
+void UBLEScannerSubsystem::HandleTransportReadRequestCompleted(const FString& DeviceId,
+	const FString& CharacteristicUuid,
+	const FBLECharacteristicData& Data)
+{
+
+}
+
 void UBLEScannerSubsystem::StartScan()
 {
 	if (!Transport.IsValid() || bIsScanning)

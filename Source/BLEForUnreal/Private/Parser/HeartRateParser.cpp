@@ -1,7 +1,7 @@
 #include "Parser/HeartRateParser.h"
 
 #include "BLEGattUuids.h"
-#include "BLEMetricNames.h"
+#include "BLENameDefinitions.h"
 
 FString FHeartRateParser::GetServiceUuid() const
 {
@@ -18,7 +18,7 @@ TArray<FName> FHeartRateParser::GetSupportedMetrics() const
 	return { BLEMetricNames::HeartRateBpm };
 }
 
-TArray<FBLEMetric> FHeartRateParser::Parse(const TArray<uint8>& Data)
+TArray<FBLEMetric> FHeartRateParser::ParseNotify(const TArray<uint8>& Data)
 {
 	float HeartRate = 0.0f;
 
@@ -40,9 +40,4 @@ TArray<FBLEMetric> FHeartRateParser::Parse(const TArray<uint8>& Data)
 	}
 
 	return { {BLEMetricNames::HeartRateBpm, HeartRate} };
-}
-
-void FHeartRateParser::Reset()
-{
-
 }

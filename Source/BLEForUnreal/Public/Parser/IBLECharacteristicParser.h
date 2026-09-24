@@ -1,5 +1,11 @@
 #pragma once
 
+enum class DataType : uint8 {
+	Invalid,
+	Float,
+	String
+};
+
 /* One decoded value from a characteristic update (e.g. HeartRateBPM (55.0f) */
 struct FBLEMetric
 {
@@ -8,12 +14,34 @@ public:
 	FBLEMetric(FName InMetric, float InValue)
 		:MetricName(InMetric)
 		,Value(InValue)
-	{
-
-	}
+		,Type(DataType::Float)
+	{}
 
 	FName MetricName;
 	float Value = 0.0f;
+	DataType Type = DataType::Invalid;
+};
+
+/* One decoded value from a read request (e.g. DeviceName ("HeartRateMonitor") */
+struct FBLERead
+{
+public:
+	FBLERead() = default;
+	FBLERead(FName InRead, float InValue)
+		:ReadName(InRead)
+		,Value(InValue)
+		,Type(DataType::Float)
+	{ }
+	FBLERead(FName InRead, FString InString)
+		:ReadName(InRead)
+		,String(InString)
+		,Type(DataType::String)
+	{ }
+
+	FName ReadName;
+	float Value = 0.0f;
+	FString String = "";
+	DataType Type = DataType::Invalid;
 };
 
 /*
@@ -38,8 +66,18 @@ public:
 	*/
 	virtual TArray<FName> GetSupportedMetrics() const = 0;
 
-	/* Decodes one characteristic update. May return multiple metrics */
-	virtual TArray<FBLEMetric> Parse(const TArray<uint8>& Data) = 0;
+	/*
+	 * Every read request this parser can accept, known statically -
+	*/
+	virtual TArray<FName> GetSupportedReadRequests() const = 0;
+
+	/* If characteristic is of type: notify								*/
+	/* Decodes one characteristic update. May return multiple metrics	*/
+	virtual TArray<FBLEMetric> ParseNotify(const TArray<uint8>& Data) = 0;
+
+	/* If characteristic is of type: read										*/
+	/* Decodes one characteristic read request. May return multiple read values */
+	virtual TArray<FBLERead> ParseReadRequest(const TArray<uint8>& Data) = 0;
 
 	/*
 	 * Clears any state carried between packets.
