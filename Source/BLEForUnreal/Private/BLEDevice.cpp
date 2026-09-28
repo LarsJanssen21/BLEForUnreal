@@ -93,7 +93,7 @@ UBLEReadRequest* UBLEDevice::RequestValueRead(FName ReadName)
 		ActiveParsers.Add({ Parser->GetCharacteristicUuid(), Parser }); // Parser will always be active after first use
 	}
 
-	UBLEReadRequest* Request = NewObject<UBLEReadRequest>();
+	UBLEReadRequest* Request = NewObject<UBLEReadRequest>(this);
 
 	TArray<TObjectPtr<UBLEReadRequest>>& RequestArray = ReadRequests.FindOrAdd(ReadName).Array;
 	RequestArray.Add(Request);
