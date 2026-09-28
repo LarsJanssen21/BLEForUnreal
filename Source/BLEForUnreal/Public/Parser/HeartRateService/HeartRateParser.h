@@ -2,16 +2,41 @@
 
 #include "Parser/IBLECharacteristicParser.h"
 
+#include "BLEGattUuids.h"
+#include "BLENameDefinitions.h"
+
 class FHeartRateParser : public IBLECharacteristicParser
 {
 public:
-	virtual FString GetServiceUuid() const override;
-	virtual FString GetCharacteristicUuid() const override;
+	METRIC_CHARACTERISTIC_IMPLEMENTATION(
+		BLEGattUuids::HeartRateService,
+		BLEGattUuids::HeartRateMeasurement,
+		BLEMetricNames::HeartRateBpm
+	);
 
-	virtual TArray<FName> GetSupportedMetrics() const override;
-	virtual TArray<FName> GetSupportedReadRequests() const override { return{}; }
+	virtual TArray<FBLEMetric> ParseNotify(const TArray<uint8>& Data) override
+	{
+		float HeartRate = 0.0f;
 
-	virtual TArray<FBLEMetric> ParseNotify(const TArray<uint8>& Data) override;
-	virtual TArray<FBLERead> ParseReadRequest(const TArray<uint8>& Data) override { return{}; }
+		const uint8_t* BasePtr = Data.GetData();
+		if (BasePtr)
+		{
+			uint8_t FlagsField = BasePtr[0];
+
+			const void* HeartRateMeasurementField = static_cast<const void*>(&BasePtr[1]);
+
+			if ((FlagsField & 0x1) != 0)
+			{
+				HeartRate = static_cast<float>(*static_cast<const uint16_t*>(HeartRateMeasurementField));
+			}
+			else
+			{
+				HeartRate = static_cast<float>(*static_cast<const uint8_t*>(HeartRateMeasurementField));
+			}
+		}
+
+		return { {BLEMetricNames::HeartRateBpm, HeartRate} };
+	}
+
 	virtual void Reset() override { }
 };

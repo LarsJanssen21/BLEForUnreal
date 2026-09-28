@@ -7,6 +7,13 @@ virtual TArray<FName> GetSupportedMetrics() const override { return {}; } \
 virtual TArray<FName> GetSupportedReadRequests() const override { return { __VA_ARGS__ }; } \
 virtual TArray<FBLEMetric> ParseNotify(const TArray<uint8>& Data) override { return {}; }
 
+#define METRIC_CHARACTERISTIC_IMPLEMENTATION(ServiceUuid, CharUuid, ...) \
+virtual FString GetServiceUuid() const override { return ServiceUuid; } \
+virtual FString GetCharacteristicUuid() const override { return CharUuid; } \
+virtual TArray<FName> GetSupportedMetrics() const override { return {__VA_ARGS__}; } \
+virtual TArray<FName> GetSupportedReadRequests() const override { return {}; } \
+virtual TArray<FBLERead> ParseReadRequest(const TArray<uint8>& Data) override { return {}; }
+
 enum class DataType : uint8 {
 	Invalid,
 	Float,
