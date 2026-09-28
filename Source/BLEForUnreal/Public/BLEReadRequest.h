@@ -18,6 +18,13 @@ public:
 	UFUNCTION(BlueprintPure, Category="BLE")
 	bool IsActive() const { return bIsAlive; }
 
+	virtual void BeginDestroy() override
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Bye bye ReadRequest!"));
+
+		Super::BeginDestroy();
+	}
+
 private:
 	friend class UBLEDevice;
 

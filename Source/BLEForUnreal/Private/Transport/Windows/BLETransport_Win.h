@@ -56,6 +56,9 @@ private:
 	void EnableNotifications(const FString& DeviceId, 
 		const FString& CharacteristicUuid, GattCharacteristic Characteristic);
 
+	void ExecuteReadRequest(const FString& DeviceId,
+		const FString& CharacteristicUuid, GattCharacteristic Characteristic);
+
 private:
 	/*	Callbacks	*/
 	void OnAdvertisementReceived(

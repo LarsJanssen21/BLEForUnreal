@@ -17,7 +17,7 @@ public:
 	virtual TArray<FBLERead> ParseReadRequest(const TArray<uint8>& Data) override
 	{
 		const UTF8CHAR* str = reinterpret_cast<const UTF8CHAR*>(Data.GetData());
-		FString DeviceName = FString(str);
+		FString DeviceName = FString(Data.Num(), str);
 
 		return { { BLEReadNames::DeviceName, DeviceName } };
 	}

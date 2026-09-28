@@ -56,7 +56,7 @@ public:
 	UBLEReadRequest* RequestValueRead(FName ReadName);
 
 	/*
-	 * Used by UBLEScannerSubsystem to pass through updates on subscribed characteristics
+	 * Used by UBLEScannerSubsystem to pass through updates on all charcateristic
 	*/
 	void HandleCharacteristicData(const FString& CharacteristicUuid, const FBLECharacteristicData& Data);
 

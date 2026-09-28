@@ -25,6 +25,7 @@ void UBLEScannerSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 		Transport->OnDeviceFound.BindUObject(this, &UBLEScannerSubsystem::HandleTransportDeviceFound);
 		Transport->OnConnectComplete.BindUObject(this, &UBLEScannerSubsystem::HandleTransportConnectionComplete);
 		Transport->OnCharacteristicUpdated.BindUObject(this, &UBLEScannerSubsystem::HandleTransportCharacteristicUpdated);
+		Transport->OnReadRequestCompleted.BindUObject(this, &UBLEScannerSubsystem::HandleTransportReadRequestCompleted);
 	}
 }
 

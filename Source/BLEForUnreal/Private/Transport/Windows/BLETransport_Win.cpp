@@ -174,7 +174,14 @@ void BLETransportWindows::SubscribeToCharacteristic(const FString& DeviceId,
 				}
 
 				GattCharacteristic Characteristic = Op.GetResults().Characteristics().GetAt(0);
-				CachedCharacteristics.Add(CacheKey, Characteristic);
+
+				// Potential discarding of value due to OS threading behavior
+				// This path might get exectued multiple times if there's multiple requests to SubscribeToMetric or ReadRequest on a as of yet uncached characteristic in a single frame
+				// (e.g. on the device connect delegate where multiple metrics might be described to all at once).
+				// Mentioned here and assumed this is safe behavior (28/09/2026)
+				AsyncTask(ENamedThreads::GameThread, [this, CacheKey, Characteristic](){
+					CachedCharacteristics.Add({ CacheKey, Characteristic });
+				});
 
 				EnableNotifications(DeviceId, CharUuid, Characteristic);
 			}
@@ -202,43 +209,31 @@ void BLETransportWindows::UnsubscribeFromCharacteristic(const FString& DeviceId,
 		GattClientCharacteristicConfigurationDescriptorValue::None);
 }
 
-FString BLETransportWindows::ComposeCharacteristicCacheKey(
-	FString DeviceId, FString NormalizedCharUuid)
-{
-	return DeviceId + TEXT("|") + NormalizedCharUuid;
-}
-
 
 void BLETransportWindows::ReadCharacteristic(const FString& DeviceId,
 	const FString& ServiceUuid, const FString& CharUuid)
 {
 	const FString CacheKey = ComposeCharacteristicCacheKey(DeviceId, CharUuid);
 
-	GattCharacteristic* Characteristic = CachedCharacteristics.Find(CacheKey);
-	if (!Characteristic)
+	if (GattCharacteristic* Characteristic = CachedCharacteristics.Find(CacheKey))
+	{
+		ExecuteReadRequest(DeviceId, CharUuid, *Characteristic);
+		return;
+	}
+
+	FConnectedDeviceEntry* Entry = ConnectedDevices.Find(DeviceId);
+	if (!Entry)
 	{
 		return;
 	}
 
-	if (OpenReadRequest == CacheKey)
-	{
-		// Already handling this requests. Catch on callback.
-		return;
-	}
+	GattDeviceService* Service = Entry->Services.Find(ServiceUuid);
 
-	if (QueuedReadRequests.Contains(CacheKey))
-	{
-		// Already on the queue. Catch on callback when handling
-		return;
-	}
-
-	if (OpenReadRequest.IsEmpty())
-	{
-		OpenReadRequest = CacheKey;
-
-		// Important is that we can only ever support one read at a time, distributing if multiple callers arrive is up to us.
-		Characteristic->ReadValueAsync(BluetoothCacheMode::Uncached).Completed(
-			[this, DeviceId, CharUuid, CacheKey](IAsyncOperation<GattReadResult> const& Op, AsyncStatus Status)
+	Service->GetCharacteristicsForUuidAsync(
+		winrt::guid(TCHAR_TO_UTF8(*CharUuid)), BluetoothCacheMode::Uncached)
+		.Completed(
+			[this, DeviceId, ServiceUuid, CharUuid, CacheKey]
+			(IAsyncOperation<GattCharacteristicsResult> const& Op, AsyncStatus Status)
 			{
 				if (Status != AsyncStatus::Completed)
 				{
@@ -253,34 +248,35 @@ void BLETransportWindows::ReadCharacteristic(const FString& DeviceId,
 					WaitForSingleObject(Signal, INFINITE);
 				}
 
-				FBLECharacteristicData Data(
-					Op.GetResults().Value().data(),
-					Op.GetResults().Value().Length()
-				);
+				if (Op.GetResults().Status() != GattCommunicationStatus::Success ||
+					Op.GetResults().Characteristics().Size() == 0)
+				{
+					// Characteristics genuinely doesn't exist on this device, nothing to subscribe to
+					return;
+				}
 
-				AsyncTask(ENamedThreads::GameThread, [this, DeviceId, CharUuid, CacheKey, Data = MoveTemp(Data)]()
-					{
-						OnReadRequestCompleted.ExecuteIfBound(DeviceId, CharUuid, Data);
+				GattCharacteristic Characteristic = Op.GetResults().Characteristics().GetAt(0);
 
-						if (!QueuedReadRequests.IsEmpty())
-						{
-							OpenReadRequest = QueuedReadRequests.Pop();
-						}
-						else
-						{
-							OpenReadRequest = {};
-						}
-					}
-				);
+				// Potential discarding of value due to OS threading behavior
+				// This path might get exectued multiple times if there's multiple requests to SubscribeToMetric or ReadRequest on a as of yet (at this point in the game's lifecycle)
+				// uncached characteristic in a single frame (e.g. on the device connect delegate where multiple metrics might be described to all at once). This is a naive solution, 
+				// but seeing that multiple code paths can reach the CachedCharaceristics map which is not thread safe it's a necessary evil.
+				// 
+				// Mentioned here and assumed this is safe behavior (28/09/2026)
+				AsyncTask(ENamedThreads::GameThread, [this, CacheKey, Characteristic]() {
+					CachedCharacteristics.Add({ CacheKey, Characteristic });
+				});
+
+				ExecuteReadRequest(DeviceId, CharUuid, Characteristic);
 			}
 		);
-	}
-	else
-	{
-		// Add to queue
-		QueuedReadRequests.Push(CacheKey);
-	}
 
+}
+
+FString BLETransportWindows::ComposeCharacteristicCacheKey(
+	FString DeviceId, FString NormalizedCharUuid)
+{
+	return DeviceId + TEXT("|") + NormalizedCharUuid;
 }
 
 void BLETransportWindows::DiscoverServicesAndComplete(BluetoothLEDevice Device, const FString& DeviceId)
@@ -409,6 +405,73 @@ void BLETransportWindows::EnableNotifications(const FString& DeviceId,
 				}
 			}
 		);
+}
+
+void BLETransportWindows::ExecuteReadRequest(const FString& DeviceId,
+	const FString& CharacteristicUuid, GattCharacteristic Characteristic)
+{
+	FString CacheKey = ComposeCharacteristicCacheKey(DeviceId, CharacteristicUuid);
+
+	if (OpenReadRequest == CacheKey)
+	{
+		// Already handling this requests. Catch on callback.
+		return;
+	}
+
+	if (QueuedReadRequests.Contains(CacheKey))
+	{
+		// Already on the queue. Catch on callback when handling
+		return;
+	}
+
+	if (OpenReadRequest.IsEmpty())
+	{
+		OpenReadRequest = CacheKey;
+
+		// Important is that we can only ever support one read at a time, distributing if multiple callers arrive is up to us.
+		Characteristic.ReadValueAsync(BluetoothCacheMode::Uncached).Completed(
+			[this, DeviceId, CharacteristicUuid, CacheKey](IAsyncOperation<GattReadResult> const& Op, AsyncStatus Status)
+			{
+				if (Status != AsyncStatus::Completed)
+				{
+					HANDLE Signal = CreateEvent(nullptr, true, false, nullptr);
+
+					Op.Completed([&](auto&&, auto&&)
+						{
+							SetEvent(Signal);
+						}
+					);
+
+					WaitForSingleObject(Signal, INFINITE);
+				}
+
+				FBLECharacteristicData Data(
+					Op.GetResults().Value().data(),
+					Op.GetResults().Value().Length()
+				);
+
+				AsyncTask(ENamedThreads::GameThread, [this, DeviceId, CharacteristicUuid, CacheKey, Data = MoveTemp(Data)]()
+					{
+						OnReadRequestCompleted.ExecuteIfBound(DeviceId, CharacteristicUuid, Data);
+
+						if (!QueuedReadRequests.IsEmpty())
+						{
+							OpenReadRequest = QueuedReadRequests.Pop();
+						}
+						else
+						{
+							OpenReadRequest = {};
+						}
+					}
+				);
+			}
+		);
+	}
+	else
+	{
+		// Add to queue
+		QueuedReadRequests.Push(CacheKey);
+	}
 }
 
 void BLETransportWindows::OnAdvertisementReceived(
