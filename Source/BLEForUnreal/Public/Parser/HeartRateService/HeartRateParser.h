@@ -1,6 +1,6 @@
 #pragma once
 
-#include "IBLECharacteristicParser.h"
+#include "Parser/IBLECharacteristicParser.h"
 
 class FHeartRateParser : public IBLECharacteristicParser
 {

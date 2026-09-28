@@ -220,35 +220,67 @@ void BLETransportWindows::ReadCharacteristic(const FString& DeviceId,
 		return;
 	}
 
-	// Important is that we can only ever support one read at a time, distributing if multiple callers arrive is up to us.
-	Characteristic->ReadValueAsync(BluetoothCacheMode::Uncached).Completed(
-		[this, DeviceId, CharUuid](IAsyncOperation<GattReadResult> const& Op, AsyncStatus Status)
-		{
-			if (Status != AsyncStatus::Completed)
-			{
-				HANDLE Signal = CreateEvent(nullptr, true, false, nullptr);
+	if (OpenReadRequest == CacheKey)
+	{
+		// Already handling this requests. Catch on callback.
+		return;
+	}
 
-				Op.Completed([&](auto&&, auto&&)
-					{
-						SetEvent(Signal);
-					}
+	if (QueuedReadRequests.Contains(CacheKey))
+	{
+		// Already on the queue. Catch on callback when handling
+		return;
+	}
+
+	if (OpenReadRequest.IsEmpty())
+	{
+		OpenReadRequest = CacheKey;
+
+		// Important is that we can only ever support one read at a time, distributing if multiple callers arrive is up to us.
+		Characteristic->ReadValueAsync(BluetoothCacheMode::Uncached).Completed(
+			[this, DeviceId, CharUuid, CacheKey](IAsyncOperation<GattReadResult> const& Op, AsyncStatus Status)
+			{
+				if (Status != AsyncStatus::Completed)
+				{
+					HANDLE Signal = CreateEvent(nullptr, true, false, nullptr);
+
+					Op.Completed([&](auto&&, auto&&)
+						{
+							SetEvent(Signal);
+						}
+					);
+
+					WaitForSingleObject(Signal, INFINITE);
+				}
+
+				FBLECharacteristicData Data(
+					Op.GetResults().Value().data(),
+					Op.GetResults().Value().Length()
 				);
 
-				WaitForSingleObject(Signal, INFINITE);
+				AsyncTask(ENamedThreads::GameThread, [this, DeviceId, CharUuid, CacheKey, Data = MoveTemp(Data)]()
+					{
+						OnReadRequestCompleted.ExecuteIfBound(DeviceId, CharUuid, Data);
+
+						if (!QueuedReadRequests.IsEmpty())
+						{
+							OpenReadRequest = QueuedReadRequests.Pop();
+						}
+						else
+						{
+							OpenReadRequest = {};
+						}
+					}
+				);
 			}
+		);
+	}
+	else
+	{
+		// Add to queue
+		QueuedReadRequests.Push(CacheKey);
+	}
 
-			FBLECharacteristicData Data(
-				Op.GetResults().Value().data(),
-				Op.GetResults().Value().Length()
-			);
-
-			AsyncTask(ENamedThreads::GameThread, [this, DeviceId, CharUuid, Data = MoveTemp(Data)]()
-				{
-					OnReadRequestCompleted.ExecuteIfBound(DeviceId, CharUuid, Data);
-				}
-			);
-		}
-	);
 }
 
 void BLETransportWindows::DiscoverServicesAndComplete(BluetoothLEDevice Device, const FString& DeviceId)

@@ -137,7 +137,13 @@ void UBLEScannerSubsystem::HandleTransportReadRequestCompleted(const FString& De
 	const FString& CharacteristicUuid,
 	const FBLECharacteristicData& Data)
 {
-
+	for (UBLEDevice* Device : ConnectedDevices)
+	{
+		if (Device && Device->GetDeviceId() == DeviceId)
+		{
+			Device->HandleCharacteristicData(CharacteristicUuid, Data);
+		}
+	}
 }
 
 void UBLEScannerSubsystem::StartScan()

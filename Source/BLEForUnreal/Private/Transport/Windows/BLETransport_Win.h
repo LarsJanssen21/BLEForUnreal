@@ -56,10 +56,6 @@ private:
 	void EnableNotifications(const FString& DeviceId, 
 		const FString& CharacteristicUuid, GattCharacteristic Characteristic);
 
-	TOptional<GattCharacteristic> FindOrDiscoverCharacteristic(const FString& DeviceId,
-		const FString& ServiceUuid, const FString& CharacteristicUuid
-	);
-
 private:
 	/*	Callbacks	*/
 	void OnAdvertisementReceived(
@@ -73,6 +69,9 @@ private:
 
 	TMap<FString /*Cache key*/, GattCharacteristic> CachedCharacteristics;
 	TMap<FString /*Cache key*/, winrt::event_token> NotificationTokens;
+
+	FString OpenReadRequest = {}; /*Cache key*/
+	TArray<FString /*Cache key*/> QueuedReadRequests = {};
 
 	BluetoothLEAdvertisementWatcher AdvertisementWatcher;
 	event_token AdvertisementReceivedToken;

@@ -81,22 +81,19 @@ UBLEMetricSubscription* UBLEDevice::SubscribeToMetric(FName MetricName)
 UBLEReadRequest* UBLEDevice::RequestValueRead(FName ReadName)
 {
 	IBLECharacteristicParser* const* FoundParser = AvailableParsersByRead.Find(ReadName);
-	if (*FoundParser)
+	if (!FoundParser || !Transport)
 	{
 		return nullptr;
 	}
+
+	IBLECharacteristicParser* Parser = *FoundParser;
 
 	UBLEReadRequest* Request = NewObject<UBLEReadRequest>(this);
 
 	TArray<TObjectPtr<UBLEReadRequest>>& RequestArray = ReadRequests.FindOrAdd(ReadName).Array;
 	RequestArray.Add(Request);
-	if (RequestArray.Num() == 1)
-	{
-		// Handle through the transport or subsystem?
-		// as the BLE spec states that only one request can be handled, others are discarded.
-		// At the OS level windows still queues internally. Should we rely on this behaviour?
-		// Or handle it in the subsystem to explicitly queue these operations?
-	}
+
+	Transport->ReadCharacteristic(DeviceId, Parser->GetServiceUuid(), Parser->GetCharacteristicUuid());
 
 	return Request;
 }

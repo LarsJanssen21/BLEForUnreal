@@ -1,4 +1,4 @@
-#include "Parser/HeartRateParser.h"
+#include "Parser/HeartRateService/HeartRateParser.h"
 
 #include "BLEGattUuids.h"
 #include "BLENameDefinitions.h"

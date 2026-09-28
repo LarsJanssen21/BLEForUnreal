@@ -25,10 +25,16 @@ namespace BLEMetricNames {
 namespace BLEReadNames {
 
 	/*
+	 * GAP Service 
+	*/
+	const FName DeviceName = FName("devicename");
+
+	/*
 	 *  Device Information Service Specification
 	 * https://www.bluetooth.com/specifications/specs/device-information-service-1-1/
 	*/
-	const FName DeviceName = FName("devicename"); // string-field
+	const FName ManufacturerName = FName("manufacturername"); // string-field
+	const FName ModelNumber = FName("modelnumber"); // string-field
 
 }
 
