@@ -49,9 +49,19 @@ public:
 	UFUNCTION(BlueprintPure, category="BLE")
 	TArray<FName> GetAvailableMetrics() const;
 
-	UFUNCTION(BlueprintCallable, Category="BLE")
+	/*
+	 * Subscribe to notifications on metric. Return value should be used.
+	 * Handle is only marked as invalid and garbage collected when Unsubscribe is called
+	 * on the returned object.
+	*/
+	UFUNCTION(BlueprintCallable, Category="BLE", Meta=(ReturnValueShouldBeUsed="true"))
 	UBLEMetricSubscription* SubscribeToMetric(FName MetricName);
 
+	/*
+	 * Request a value read. Calls OnRequestCompleted when finished.
+	 * Returned handle can be discarded after binding to OnRequestCompleted as
+	 * handle is marked stale and garbage collected when OnRequestCompleted has been called
+	*/
 	UFUNCTION(BlueprintCallable, Category="BLE")
 	UBLEReadRequest* RequestValueRead(FName ReadName);
 
@@ -75,9 +85,15 @@ private:
 	// Sole owner of every parser this device could use
 	TArray<TUniquePtr<IBLECharacteristicParser>> OwnedParsers;
 
+	/*
+	 * Parsers that are alive (i.e. Actively processing Notifications, ready to respond to read requests)
+	 * Metric(Notify) parsers are alive as long as they have subscribers
+	 * Read parsers are alive for the lifetime of the device instance after they've been called once.
+	*/
+	TMap<FString, IBLECharacteristicParser*> ActiveParsers; // Characteristic UUID -> Parser
+
 	TMap<FName, IBLECharacteristicParser*> AvailableParsersByMetric; // Metric name --> Parser
 	TMap<FName, IBLECharacteristicParser*> AvailableParsersByRead; // Read name --> Parser
-	TMap<FString, IBLECharacteristicParser*> ActiveParsers; // Characteristic UUID -> Parser
 	TMap<FString, int32_t> ParserSubscriberCount; // Characteristic UUID -> Subscriber Count
 
 	UPROPERTY()

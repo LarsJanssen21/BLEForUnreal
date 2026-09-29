@@ -8,6 +8,9 @@ class UBLEDevice;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnMetricValueUpdated, float, Value);
 
+/*
+ * 
+*/
 UCLASS(BlueprintType)
 class BLEFORUNREAL_API UBLEMetricSubscription : public UObject
 {

@@ -139,6 +139,7 @@ void UBLEDevice::HandleCharacteristicData(const FString& CharacteristicUuid, con
 				for (UBLEReadRequest* Request : (*FoundRequestArray).Array)
 				{
 					Request->OnRequestCompleted.Broadcast(Read.String);
+					Request->bIsAlive = false;
 				}
 
 				ReadRequests.Remove(Read.ReadName);

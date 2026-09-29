@@ -19,6 +19,11 @@
 			"Name": "BLEForUnreal",
 			"Type": "Runtime",
 			"LoadingPhase": "Default"
+		},
+				{
+			"Name": "BLEForUnrealEditor",
+			"Type": "Editor",
+			"LoadingPhase": "PostEngineInit"
 		}
 	]
 }

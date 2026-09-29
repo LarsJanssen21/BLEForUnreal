@@ -31,7 +31,12 @@ public:
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
 	virtual void Deinitialize() override;
 
-	UFUNCTION(BLueprintCallable, Category="BLE")
+	/*
+	 * Starts a filtered scan, bind to OnDeviceDiscovered delegate.
+	 * Returned value must be used, only calling StopScan will mark this object
+	 * as stale.
+	*/
+	UFUNCTION(BLueprintCallable, Category="BLE", Meta=(ReturnValueShouldBeUsed="true"))
 	UBLEScanRequest* StartFilteredScan(EBLEDeviceCategory Category);
 
 	UFUNCTION(BlueprintCallable, Category="BLE")
