@@ -19,6 +19,12 @@ DECLARE_DELEGATE_ThreeParams(FONBLEReadRequestCompleted,
 	const FBLECharacteristicData& Data
 );
 
+DECLARE_DELEGATE_ThreeParams(FOnBLEWriteRequestCompleted,
+	const FString& DeviceId,
+	const FString& CharacteristicUuid,
+	bool bSuccess
+);
+
 class IBLETransport
 {
 public:
@@ -41,8 +47,12 @@ public:
 	virtual void ReadCharacteristic(const FString& DeviceId,
 		const FString& ServiceUuid, const FString& CharUuid) = 0;
 
+	virtual void WriteCharacteristic(const FString& DeviceId,
+		const FString& ServiceUuid, const FString& CharUuid, FBLECharacteristicData InData) = 0;
+
 	FONBLETransportDeviceFound OnDeviceFound;
 	FONBLEConnectComplete OnConnectComplete;
 	FONBLECharacteristicUpdated OnCharacteristicUpdated;
 	FONBLEReadRequestCompleted OnReadRequestCompleted;
+	FOnBLEWriteRequestCompleted OnWriteRequestCompleted;
 };

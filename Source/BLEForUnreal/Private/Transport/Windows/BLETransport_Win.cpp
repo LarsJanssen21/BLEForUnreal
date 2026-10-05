@@ -270,13 +270,99 @@ void BLETransportWindows::ReadCharacteristic(const FString& DeviceId,
 				ExecuteReadRequest(DeviceId, CharUuid, Characteristic);
 			}
 		);
+}
 
+void BLETransportWindows::WriteCharacteristic(const FString& DeviceId,
+	const FString& ServiceUuid, const FString& CharUuid, FBLECharacteristicData InData)
+{
+	const FString CacheKey = ComposeCharacteristicCacheKey(DeviceId, CharUuid);
+
+	if (GattCharacteristic* Characteristic = CachedCharacteristics.Find(CacheKey))
+	{
+		ExecuteWriteRequest(DeviceId, CharUuid, *Characteristic, InData);
+		return;
+	}
+
+	FConnectedDeviceEntry* Entry = ConnectedDevices.Find(DeviceId);
+	if (!Entry)
+	{
+		return;
+	}
+
+	GattDeviceService* Service = Entry->Services.Find(ServiceUuid);
+
+	Service->GetCharacteristicsForUuidAsync(
+		winrt::guid(TCHAR_TO_UTF8(*CharUuid)), BluetoothCacheMode::Uncached)
+		.Completed(
+			[this, DeviceId, ServiceUuid, CharUuid, CacheKey, InData]
+			(IAsyncOperation<GattCharacteristicsResult> const& Op, AsyncStatus Status)
+			{
+				if (Status != AsyncStatus::Completed)
+				{
+					HANDLE Signal = CreateEvent(nullptr, true, false, nullptr);
+
+					Op.Completed([&](auto&&, auto&&)
+						{
+							SetEvent(Signal);
+						}
+					);
+
+					WaitForSingleObject(Signal, INFINITE);
+				}
+
+				if (Op.GetResults().Status() != GattCommunicationStatus::Success ||
+					Op.GetResults().Characteristics().Size() == 0)
+				{
+					// Characteristics genuinely doesn't exist on this device, nothing to subscribe to
+					return;
+				}
+
+				GattCharacteristic Characteristic = Op.GetResults().Characteristics().GetAt(0);
+
+				// Potential discarding of value due to OS threading behavior
+				// This path might get exectued multiple times if there's multiple requests to SubscribeToMetric or ReadRequest on a as of yet (at this point in the game's lifecycle)
+				// uncached characteristic in a single frame (e.g. on the device connect delegate where multiple metrics might be described to all at once). This is a naive solution, 
+				// but seeing that multiple code paths can reach the CachedCharaceristics map which is not thread safe it's a necessary evil.
+				// 
+				// Mentioned here and assumed this is safe behavior (28/09/2026)
+				AsyncTask(ENamedThreads::GameThread, [this, CacheKey, Characteristic]() {
+					CachedCharacteristics.Add({ CacheKey, Characteristic });
+					}
+				);
+
+				ExecuteWriteRequest(DeviceId, CharUuid, Characteristic, InData);
+			}
+		);
 }
 
 FString BLETransportWindows::ComposeCharacteristicCacheKey(
 	FString DeviceId, FString NormalizedCharUuid)
 {
 	return DeviceId + TEXT("|") + NormalizedCharUuid;
+}
+
+bool BLETransportWindows::CharacteristicViableCheck(FString& OutCacheKey, 
+	GattCharacteristic*& OutCharacteristic, 
+	const FString& DeviceId, const FString& CharUuid)
+{
+	OutCacheKey = ComposeCharacteristicCacheKey(DeviceId, CharUuid);
+
+	if (GattCharacteristic* Characteristic = CachedCharacteristics.Find(OutCacheKey))
+	{
+		OutCharacteristic = Characteristic;
+	}
+	else
+	{
+		return false;
+	}
+
+	FConnectedDeviceEntry* Entry = ConnectedDevices.Find(DeviceId);
+	if (!Entry)
+	{
+		return false;
+	}
+
+	return true;
 }
 
 void BLETransportWindows::DiscoverServicesAndComplete(BluetoothLEDevice Device, const FString& DeviceId)
@@ -456,7 +542,13 @@ void BLETransportWindows::ExecuteReadRequest(const FString& DeviceId,
 
 						if (!QueuedReadRequests.IsEmpty())
 						{
-							OpenReadRequest = QueuedReadRequests.Pop();
+							OpenReadRequest = QueuedReadRequests[0];
+							FReadRequestEntry Entry = CachekeyToReadRequests[OpenReadRequest];
+
+							QueuedReadRequests.RemoveAt(0);
+							CachekeyToReadRequests.Remove(OpenReadRequest);
+
+							ExecuteReadRequest(Entry.DeviceId, Entry.CharacteristicUuid, Entry.Characteristic);
 						}
 						else
 						{
@@ -471,7 +563,80 @@ void BLETransportWindows::ExecuteReadRequest(const FString& DeviceId,
 	{
 		// Add to queue
 		QueuedReadRequests.Push(CacheKey);
+		FReadRequestEntry Entry{
+			DeviceId,
+			CharacteristicUuid,
+			Characteristic
+		};
+
+		CachekeyToReadRequests.Add({ CacheKey, Entry });
 	}
+}
+
+
+void BLETransportWindows::ExecuteWriteRequest(const FString& DeviceId,
+	const FString& CharacteristicUuid, GattCharacteristic Characteristic,
+	FBLECharacteristicData InData)
+{
+	if (OpenWriteRequest.IsSet())
+	{
+		// Request in progress, add to queue
+		FWriteRequestEntry Entry{
+			DeviceId,
+			CharacteristicUuid,
+			Characteristic,
+			InData
+		};
+
+		QueuedWriteRequests.Push(Entry);
+		return;
+	}
+
+	winrt::Windows::Storage::Streams::Buffer buffer(InData.Num());
+	memcpy(buffer.data(), InData.GetData(), InData.Num());
+	Characteristic.WriteValueWithResultAsync(buffer).Completed(
+		[this, DeviceId, CharacteristicUuid](IAsyncOperation<GattWriteResult> Op, AsyncStatus Status) 
+		{
+			if (Status != AsyncStatus::Completed)
+			{
+				HANDLE Signal = CreateEvent(nullptr, true, false, nullptr);
+
+				Op.Completed([&](auto&&, auto&&) {
+						SetEvent(Signal);
+					}
+				);
+
+				WaitForSingleObject(Signal, INFINITE);
+			}
+
+			bool bSuccess = false;
+			if (Op.GetResults().Status() == GattCommunicationStatus::Success)
+			{
+				bSuccess = true;
+			}
+
+			AsyncTask(ENamedThreads::GameThread, [this, DeviceId, CharacteristicUuid, bSuccess]()
+				{
+					OnWriteRequestCompleted.ExecuteIfBound(DeviceId, CharacteristicUuid, bSuccess);
+
+					if (!QueuedWriteRequests.IsEmpty())
+					{
+						OpenWriteRequest = QueuedWriteRequests[0];
+						QueuedWriteRequests.RemoveAt(0);
+
+						const FWriteRequestEntry& Entry = OpenWriteRequest.GetValue();
+
+						ExecuteWriteRequest(Entry.DeviceId, Entry.CharacteristicUuid,
+							Entry.Characteristic, Entry.Payload);
+					}
+					else
+					{
+						OpenWriteRequest.Reset();
+					}
+				}
+			);
+		}
+	);
 }
 
 void BLETransportWindows::OnAdvertisementReceived(

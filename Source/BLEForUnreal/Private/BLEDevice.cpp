@@ -32,6 +32,11 @@ void UBLEDevice::Initialize(const FString& InDeviceId, IBLETransport* InTranspor
 		{
 			AvailableParsersByRead.Add({ ReadName, RawParser });
 		}
+
+		for (const FName& WriteName : RawParser->GetSupportedWriteSubmits())
+		{
+			AvailableParsersByWrite.Add({ WriteName, RawParser });
+		}
 	}
 }
 
@@ -47,6 +52,20 @@ TArray<FName> UBLEDevice::GetAvailableMetrics() const
 {
 	TArray<FName> Result;
 	AvailableParsersByMetric.GenerateKeyArray(Result);
+	return Result;
+}
+
+TArray<FName> UBLEDevice::GetAvailableReads() const
+{
+	TArray<FName> Result;
+	AvailableParsersByRead.GenerateKeyArray(Result);
+	return Result;
+}
+
+TArray<FName> UBLEDevice::GetAvailableWrites() const
+{
+	TArray<FName> Result;
+	AvailableParsersByWrite.GenerateKeyArray(Result);
 	return Result;
 }
 
@@ -103,6 +122,28 @@ UBLEReadRequest* UBLEDevice::RequestValueRead(FName ReadName)
 	return Request;
 }
 
+UBLEWriteRequest* UBLEDevice::SubmitValueWriteInt32(FName WriteName, int32 InValue)
+{
+	IBLECharacteristicParser* Parser = FindWriteParser(WriteName);
+
+	if (!Parser)
+	{
+		return nullptr;
+	}
+
+	TArray<uint8_t> Data = Parser->PrepareWriteRequestBuffer(
+		WriteName,
+		static_cast<uint32_t>(InValue)
+	);
+
+	Transport->WriteCharacteristic(
+		DeviceId, Parser->GetServiceUuid(), Parser->GetCharacteristicUuid(),
+		Data
+	);
+
+	return nullptr;
+}
+
 void UBLEDevice::HandleCharacteristicData(const FString& CharacteristicUuid, const FBLECharacteristicData& Data)
 {
 	IBLECharacteristicParser* const* FoundParser = ActiveParsers.Find(CharacteristicUuid);
@@ -146,6 +187,32 @@ void UBLEDevice::HandleCharacteristicData(const FString& CharacteristicUuid, con
 			}
 		}
 	}
+
+	if (!Parser->GetSupportedWriteSubmits().IsEmpty())
+	{
+		for (const FBLEWrite& Write : (*FoundParser)->ParseWriteRequest(Data))
+		{
+
+		}
+	}
+}
+
+IBLECharacteristicParser* UBLEDevice::FindWriteParser(FName WriteName)
+{
+	IBLECharacteristicParser* const* FoundParser = AvailableParsersByWrite.Find(WriteName);
+	if (!FoundParser)
+	{
+		return nullptr;
+	}
+
+	IBLECharacteristicParser* Parser = *FoundParser;
+
+	if (!ActiveParsers.Contains(Parser->GetCharacteristicUuid()))
+	{
+		ActiveParsers.Add({ Parser->GetCharacteristicUuid(), Parser });
+	}
+
+	return Parser;
 }
 
 void UBLEDevice::RemoveSubscription(UBLEMetricSubscription* Subscription)

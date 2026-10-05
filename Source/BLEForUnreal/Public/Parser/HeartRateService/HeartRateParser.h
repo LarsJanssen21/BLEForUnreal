@@ -8,7 +8,7 @@
 class FHeartRateParser : public IBLECharacteristicParser
 {
 public:
-	METRIC_CHARACTERISTIC_IMPLEMENTATION(
+	METRIC_ONLY_CHARACTERISTIC_IMPLEMENTATION(
 		BLEGattUuids::HeartRateService,
 		BLEGattUuids::HeartRateMeasurement,
 		BLEMetricNames::HeartRateBpm
@@ -36,6 +36,34 @@ public:
 		}
 
 		return { {BLEMetricNames::HeartRateBpm, HeartRate} };
+	}
+
+	virtual void Reset() override { }
+};
+
+class FHeartRateControlPoint : public IBLECharacteristicParser
+{
+public:
+	WRITE_ONLY_CHARACTERISTIC_IMPLEMENTATION(
+		BLEGattUuids::HeartRateService,
+		BLEGattUuids::HeartRateControlPoint,
+		BLEWriteNames::HeartRateControlPoint
+	);
+
+	virtual TArray<FBLEWrite> ParseWriteRequest(const TArray<uint8>& Data) override
+	{
+		return { { BLEWriteNames::HeartRateControlPoint, static_cast<int32>(Data[0]) } };
+	}
+
+	virtual TArray<uint8_t> PrepareWriteRequestBuffer(FName WriteName, uint32_t Value) override
+	{
+		// Only incoming value will every be heartrate.controlpoint
+		if (WriteName != BLEWriteNames::HeartRateControlPoint)
+		{
+			return {};
+		}
+
+		return { 0x01 };
 	}
 
 	virtual void Reset() override { }

@@ -62,6 +62,11 @@ public:
 		const FString& CharacteristicUuid,
 		const FBLECharacteristicData& Data);
 
+	void HandleTransportWriteRequesCompleted(
+		const FString& DeviceId,
+		const FString& CharacteristicUuid,
+		bool bSuccess);
+
 private:
 	void StartScan();
 	void StopScan();

@@ -18,7 +18,7 @@ namespace BLEMetricNames {
 	 * Heart Rate Service Specification 
 	 * https://www.bluetooth.com/specifications/specs/heart-rate-service-1-0/	
 	*/
-	const FName HeartRateBpm = FName("heartratebpm"); // float-field
+	const FName HeartRateBpm = FName("heartrate.bpm"); // float-field
 
 }
 
@@ -40,6 +40,10 @@ namespace BLEReadNames {
 
 namespace BLEWriteNames {
 
-	// Reserved for future use
+	/*
+	 * Heart Rate Service Specification
+	 * https://www.bluetooth.com/specifications/specs/heart-rate-service-1-0/
+	*/
+	const FName HeartRateControlPoint = FName("heartrate.controlpoint");
 
 }

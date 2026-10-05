@@ -147,6 +147,22 @@ void UBLEScannerSubsystem::HandleTransportReadRequestCompleted(const FString& De
 	}
 }
 
+void UBLEScannerSubsystem::HandleTransportWriteRequesCompleted(const FString& DeviceId,
+	const FString& CharacteristicUuid,
+	bool bSuccess)
+{
+	for (UBLEDevice* Device : ConnectedDevices)
+	{
+		if (Device && Device->GetDeviceId() == DeviceId)
+		{
+			FBLECharacteristicData Data = {};
+			Data.Add(bSuccess ? 0 : 1);
+
+			Device->HandleCharacteristicData(CharacteristicUuid, Data);
+		}
+	}
+}
+
 void UBLEScannerSubsystem::StartScan()
 {
 	if (!Transport.IsValid() || bIsScanning)

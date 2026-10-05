@@ -8,7 +8,7 @@
 class FDeviceNameParser : public IBLECharacteristicParser
 {
 public:
-	READ_CHARACTERISTIC_IMPLEMENTATION(
+	READ_ONLY_CHARACTERISTIC_IMPLEMENTATION(
 		BLEGattUuids::GAPService,
 		BLEGattUuids::DeviceName,
 		BLEReadNames::DeviceName

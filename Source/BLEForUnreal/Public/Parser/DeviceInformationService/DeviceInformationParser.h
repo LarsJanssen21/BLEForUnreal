@@ -8,7 +8,7 @@
 class FManufacturerStringParser : public IBLECharacteristicParser
 {
 public:
-	READ_CHARACTERISTIC_IMPLEMENTATION(
+	READ_ONLY_CHARACTERISTIC_IMPLEMENTATION(
 		BLEGattUuids::DeviceInformationService,
 		BLEGattUuids::ManufacturerNameString,
 		BLEReadNames::ManufacturerName
@@ -28,7 +28,7 @@ public:
 class FModelNumberStringParser : public IBLECharacteristicParser
 {
 public:
-	READ_CHARACTERISTIC_IMPLEMENTATION(
+	READ_ONLY_CHARACTERISTIC_IMPLEMENTATION(
 		BLEGattUuids::DeviceInformationService,
 		BLEGattUuids::ModelNumberString,
 		BLEReadNames::ModelNumber

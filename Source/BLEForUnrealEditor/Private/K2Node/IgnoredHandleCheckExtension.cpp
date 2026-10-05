@@ -18,6 +18,10 @@ void UIgnoredHandleCheckExtension::ProcessBlueprintCompiled(
 
 void UIgnoredHandleCheckExtension::CheckGraph(UEdGraph* Graph, const FKismetCompilerContext& CompilationContext)
 {
+	// This currently only checks whether the pin is used at all or completely left to be and throws an error if that's the case.
+	// In the future we want to traverse the chain to verify whether the variable was actually set somewhere
+	// and throw a warning if we suspect that the variable was abandoned
+	
 	for (UEdGraphNode* Node : Graph->Nodes)
 	{
 		UK2Node_CallFunction* CallNode = Cast<UK2Node_CallFunction>(Node);

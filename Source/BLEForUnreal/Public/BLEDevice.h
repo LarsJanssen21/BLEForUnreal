@@ -12,6 +12,7 @@
 class IBLECharacteristicParser;
 class UBLEMetricSubscription;
 class UBLEReadRequest;
+class UBLEWriteRequest;
 
 USTRUCT()
 struct FReadArray
@@ -49,6 +50,12 @@ public:
 	UFUNCTION(BlueprintPure, category="BLE")
 	TArray<FName> GetAvailableMetrics() const;
 
+	UFUNCTION(BlueprintPure, category="BLE")
+	TArray<FName> GetAvailableReads() const;
+
+	UFUNCTION(BlueprintPure, Category="BLE")
+	TArray<FName> GetAvailableWrites() const;
+
 	/*
 	 * Subscribe to notifications on metric. Return value should be used.
 	 * Handle is only marked as invalid and garbage collected when Unsubscribe is called
@@ -66,11 +73,21 @@ public:
 	UBLEReadRequest* RequestValueRead(FName ReadName);
 
 	/*
+	 * Submit a value write. Calls OnWriteRequestCompleted when finished.
+	 * Returned handle can be discarded after binding to OnWriteRequestCompleted as
+	 * handle is marked stale and garbage collected when OnWriteRequestCompleted has been called
+	*/
+	UFUNCTION(BlueprintCallable, Category="BLE")
+	UBLEWriteRequest* SubmitValueWriteInt32(FName WriteName, int32 InValue);
+
+	/*
 	 * Used by UBLEScannerSubsystem to pass through updates on all charcateristic
 	*/
 	void HandleCharacteristicData(const FString& CharacteristicUuid, const FBLECharacteristicData& Data);
 
 private:
+	IBLECharacteristicParser* FindWriteParser(FName WriteName);
+
 	friend class UBLEMetricSubscription;
 
 	void RemoveSubscription(UBLEMetricSubscription* Subscription);
@@ -94,6 +111,7 @@ private:
 
 	TMap<FName, IBLECharacteristicParser*> AvailableParsersByMetric; // Metric name --> Parser
 	TMap<FName, IBLECharacteristicParser*> AvailableParsersByRead; // Read name --> Parser
+	TMap<FName, IBLECharacteristicParser*> AvailableParsersByWrite; // Write name --> Parser
 	TMap<FString, int32_t> ParserSubscriberCount; // Characteristic UUID -> Subscriber Count
 
 	UPROPERTY()

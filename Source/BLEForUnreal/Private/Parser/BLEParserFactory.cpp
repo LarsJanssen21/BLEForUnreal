@@ -28,6 +28,7 @@ TArray<TUniquePtr<IBLECharacteristicParser>> CreateParsersForServices(
 	if (DiscoveredServiceUuids.Contains(BLEGattUuids::HeartRateService))
 	{
 		Result.Add(MakeUnique<FHeartRateParser>());
+		Result.Add(MakeUnique<FHeartRateControlPoint>());
 	}
 
 	/*

@@ -1,22 +1,38 @@
 #pragma once
 
-#define READ_CHARACTERISTIC_IMPLEMENTATION(ServiceUuid, CharUuid, ...) \
+#define READ_ONLY_CHARACTERISTIC_IMPLEMENTATION(ServiceUuid, CharUuid, ...) \
 virtual FString GetServiceUuid() const override { return ServiceUuid; } \
 virtual FString GetCharacteristicUuid() const override { return CharUuid; } \
 virtual TArray<FName> GetSupportedMetrics() const override { return {}; } \
 virtual TArray<FName> GetSupportedReadRequests() const override { return { __VA_ARGS__ }; } \
-virtual TArray<FBLEMetric> ParseNotify(const TArray<uint8>& Data) override { return {}; }
+virtual TArray<FName> GetSupportedWriteSubmits() const override { return {}; } \
+virtual TArray<FBLEMetric> ParseNotify(const TArray<uint8>& Data) override { return {}; } \
+virtual TArray<FBLEWrite> ParseWriteRequest(const TArray<uint8>& Data) override { return {}; } \
+virtual TArray<uint8> PrepareWriteRequestBuffer(FName WriteName, uint32_t Value) { return {}; }
 
-#define METRIC_CHARACTERISTIC_IMPLEMENTATION(ServiceUuid, CharUuid, ...) \
+#define METRIC_ONLY_CHARACTERISTIC_IMPLEMENTATION(ServiceUuid, CharUuid, ...) \
 virtual FString GetServiceUuid() const override { return ServiceUuid; } \
 virtual FString GetCharacteristicUuid() const override { return CharUuid; } \
 virtual TArray<FName> GetSupportedMetrics() const override { return {__VA_ARGS__}; } \
 virtual TArray<FName> GetSupportedReadRequests() const override { return {}; } \
+virtual TArray<FName> GetSupportedWriteSubmits() const override { return {}; } \
+virtual TArray<FBLERead> ParseReadRequest(const TArray<uint8>& Data) override { return {}; } \
+virtual TArray<FBLEWrite> ParseWriteRequest(const TArray<uint8>& Data) override { return {}; } \
+virtual TArray<uint8> PrepareWriteRequestBuffer(FName WriteName, uint32_t Value) { return {}; }
+
+#define WRITE_ONLY_CHARACTERISTIC_IMPLEMENTATION(ServiceUuid, CharUuid, ...) \
+virtual FString GetServiceUuid() const override { return ServiceUuid; } \
+virtual FString GetCharacteristicUuid() const override { return CharUuid; } \
+virtual TArray<FName> GetSupportedMetrics() const override { return {}; } \
+virtual TArray<FName> GetSupportedReadRequests() const override { return {}; } \
+virtual TArray<FName> GetSupportedWriteSubmits() const override { return { __VA_ARGS__}; } \
+virtual TArray<FBLEMetric> ParseNotify(const TArray<uint8>& Data) override { return {}; } \
 virtual TArray<FBLERead> ParseReadRequest(const TArray<uint8>& Data) override { return {}; }
 
 enum class DataType : uint8 {
 	Invalid,
 	Float,
+	Int,
 	String
 };
 
@@ -58,6 +74,20 @@ public:
 	DataType Type = DataType::Invalid;
 };
 
+struct FBLEWrite
+{
+	FBLEWrite() = default;
+	FBLEWrite(FName InWrite, int32 InValue)
+		:WriteName(InWrite)
+		,Value(InValue)
+		,Type(DataType::Int)
+	{ }
+
+	FName WriteName;
+	int32 Value;
+	DataType Type = DataType::Invalid;
+};
+
 /*
  * Decodes one raw byte payload of ONE GATT characteristic into one or more named metrics
  * One implementation per characteristic
@@ -84,6 +114,10 @@ public:
 	 * Every read request this parser can accept, known statically -
 	*/
 	virtual TArray<FName> GetSupportedReadRequests() const = 0;
+	/*
+	 * Every write submit this parser can accept, known statically -
+	*/
+	virtual TArray<FName> GetSupportedWriteSubmits() const = 0;
 
 	/* If characteristic is of type: notify								*/
 	/* Decodes one characteristic update. May return multiple metrics	*/
@@ -92,6 +126,10 @@ public:
 	/* If characteristic is of type: read										*/
 	/* Decodes one characteristic read request. May return multiple read values */
 	virtual TArray<FBLERead> ParseReadRequest(const TArray<uint8>& Data) = 0;
+
+	/* If characteristic is of type: write										*/
+	/* Decodes one characteristic write request. May return multiple write values */
+	virtual TArray<FBLEWrite> ParseWriteRequest(const TArray<uint8>& Data) = 0;
 
 	/*
 	 * Clears any state carried between packets.
@@ -102,4 +140,5 @@ public:
 	 */
 	virtual void Reset() = 0;
 
+	virtual TArray<uint8> PrepareWriteRequestBuffer(FName WriteName, uint32_t Value) = 0;
 };

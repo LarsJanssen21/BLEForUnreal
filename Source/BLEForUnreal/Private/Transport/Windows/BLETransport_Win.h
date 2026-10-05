@@ -1,6 +1,7 @@
 #pragma once
 
 #include "IBLETransport.h"
+#include "Misc/Optional.h"
 
 #pragma warning(push)
 #pragma warning(disable: 4265)
@@ -36,6 +37,9 @@ public:
 	virtual void ReadCharacteristic(const FString& DeviceId,
 		const FString& ServiceUuid, const FString& CharUuid) override;
 
+	virtual void WriteCharacteristic(const FString& DeviceId,
+		const FString& ServiceUuid, const FString& CharUuid, FBLECharacteristicData InData) override;
+
 private:
 	inline FString FormatDeviceId(uint64_t BluetoothAddress)
 	{
@@ -51,6 +55,11 @@ private:
 private:
 	FString ComposeCharacteristicCacheKey(FString DeviceId, FString NormalizedCharUuid);
 
+	bool CharacteristicViableCheck(FString& OutCacheKey,
+		GattCharacteristic*& OutCharacteristic,
+		const FString& DeviceId, const FString& CharUuid
+	);
+
 	void DiscoverServicesAndComplete(BluetoothLEDevice Device, const FString& DeviceId);
 
 	void EnableNotifications(const FString& DeviceId, 
@@ -58,6 +67,10 @@ private:
 
 	void ExecuteReadRequest(const FString& DeviceId,
 		const FString& CharacteristicUuid, GattCharacteristic Characteristic);
+
+	void ExecuteWriteRequest(const FString& DeviceId,
+		const FString& CharacteristicUuid, GattCharacteristic Characteristic,
+		FBLECharacteristicData InData);
 
 private:
 	/*	Callbacks	*/
@@ -67,14 +80,35 @@ private:
 	);
 
 private:
+	struct FReadRequestEntry
+	{
+		FString DeviceId;
+		FString CharacteristicUuid;
+		GattCharacteristic Characteristic;
+	};
+
+	struct FWriteRequestEntry
+	{
+		FString DeviceId;
+		FString CharacteristicUuid;
+		GattCharacteristic Characteristic;
+		FBLECharacteristicData Payload;
+
+	};
+
 	UPROPERTY()
 	TMap<FString /*DeviceId*/, FConnectedDeviceEntry> ConnectedDevices;
 
 	TMap<FString /*Cache key*/, GattCharacteristic> CachedCharacteristics;
 	TMap<FString /*Cache key*/, winrt::event_token> NotificationTokens;
 
+
 	FString OpenReadRequest = {}; /*Cache key*/
 	TArray<FString /*Cache key*/> QueuedReadRequests = {};
+	TMap<FString, FReadRequestEntry> CachekeyToReadRequests;
+
+	TOptional<FWriteRequestEntry> OpenWriteRequest;
+	TArray<FWriteRequestEntry> QueuedWriteRequests = {};
 
 	BluetoothLEAdvertisementWatcher AdvertisementWatcher;
 	event_token AdvertisementReceivedToken;
