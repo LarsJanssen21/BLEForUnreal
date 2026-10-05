@@ -525,7 +525,6 @@ void BLETransportWindows::ThreadRecursiveReadRequest(const FString& DeviceId,
 {
 	bActivelyProcessingReadRequest = true;
 
-	UE_LOG(LogTemp, Warning, TEXT("ThreadRecursiveReadRequest called!"));
 	// Important is that we can only ever support one read at a time, distributing if multiple callers arrive is up to us.
 	Characteristic.ReadValueAsync(BluetoothCacheMode::Uncached).Completed(
 		[this, DeviceId, CharacteristicUuid](IAsyncOperation<GattReadResult> const& Op, AsyncStatus Status)
