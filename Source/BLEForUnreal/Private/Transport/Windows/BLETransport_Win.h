@@ -68,6 +68,9 @@ private:
 	void ExecuteReadRequest(const FString& DeviceId,
 		const FString& CharacteristicUuid, GattCharacteristic Characteristic);
 
+	void ThreadRecursiveReadRequest(const FString& DeviceId,
+		const FString& CharacteristicUuid, GattCharacteristic Characteristic);
+
 	void ExecuteWriteRequest(const FString& DeviceId,
 		const FString& CharacteristicUuid, GattCharacteristic Characteristic,
 		FBLECharacteristicData InData);
@@ -102,8 +105,7 @@ private:
 	TMap<FString /*Cache key*/, GattCharacteristic> CachedCharacteristics;
 	TMap<FString /*Cache key*/, winrt::event_token> NotificationTokens;
 
-
-	FString OpenReadRequest = {}; /*Cache key*/
+	bool bActivelyProcessingReadRequest = false;
 	TArray<FString /*Cache key*/> QueuedReadRequests = {};
 	TMap<FString, FReadRequestEntry> CachekeyToReadRequests;
 

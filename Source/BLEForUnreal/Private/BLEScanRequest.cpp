@@ -27,8 +27,15 @@ bool UBLEScanRequest::MatchesFilter(const FBLEScanResult& Result) const
 		{
 			case EBLEDeviceCategory::HeartRate:
 			{
-				FString ServiceGUID = BLEUuid::Normalize(BLEGattUuids::HeartRateService);
-				if (BLEUuid::AreEqual(ServiceGUID, service))
+				if (BLEUuid::AreEqual(BLEGattUuids::HeartRateService, service))
+				{
+					return true;
+				}
+				break;
+			}
+			case EBLEDeviceCategory::FitnessMachine:
+			{
+				if (service == BLEGattUuids::FitnessMachineService)
 				{
 					return true;
 				}

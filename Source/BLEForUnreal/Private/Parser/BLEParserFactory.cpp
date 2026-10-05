@@ -37,6 +37,7 @@ TArray<TUniquePtr<IBLECharacteristicParser>> CreateParsersForServices(
 	if (DiscoveredServiceUuids.Contains(BLEGattUuids::DeviceInformationService))
 	{
 		Result.Add(MakeUnique<FManufacturerStringParser>());
+		Result.Add(MakeUnique<FModelNumberStringParser>());
 	}
 
 	return Result;

@@ -16,8 +16,7 @@ public:
 
 	virtual TArray<FBLERead> ParseReadRequest(const TArray<uint8>& Data) override
 	{
-		const UTF8CHAR* str = reinterpret_cast<const UTF8CHAR*>(Data.GetData());
-		FString Manufacturer = FString(str);
+		FString Manufacturer = FString(Data.Num(), reinterpret_cast<const UTF8CHAR*>(Data.GetData()));
 
 		return { { BLEReadNames::ManufacturerName, Manufacturer } };
 	}
@@ -36,7 +35,9 @@ public:
 
 	virtual TArray<FBLERead> ParseReadRequest(const TArray<uint8>& Data) override
 	{
-		return {};
+		FString ModelNumber = FString(Data.Num(), reinterpret_cast<const UTF8CHAR*>(Data.GetData()));
+
+		return { { BLEReadNames::ModelNumber, ModelNumber } };
 	}
 
 	virtual void Reset() override { }

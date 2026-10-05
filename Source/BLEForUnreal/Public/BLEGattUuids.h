@@ -36,4 +36,9 @@ namespace BLEGattUuids {
 	const FString ManufacturerNameString = FString(TEXT("00002a29-0000-1000-8000-00805f9b34fb"));
 	const FString ModelNumberString = FString(TEXT("00002a24-0000-1000-8000-00805f9b34fb"));
 
+	/*
+	 * Fitness Machine Service
+	*/
+	const FString FitnessMachineService = FString(TEXT("00001826-0000-1000-8000-00805f9b34fb"));
+
 }

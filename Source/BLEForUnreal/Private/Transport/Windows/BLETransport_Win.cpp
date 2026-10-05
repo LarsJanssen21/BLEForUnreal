@@ -310,7 +310,9 @@ void BLETransportWindows::WriteCharacteristic(const FString& DeviceId,
 					WaitForSingleObject(Signal, INFINITE);
 				}
 
-				if (Op.GetResults().Status() != GattCommunicationStatus::Success ||
+				GattCommunicationStatus GattStatus = Op.GetResults().Status();
+
+				if (GattStatus != GattCommunicationStatus::Success ||
 					Op.GetResults().Characteristics().Size() == 0)
 				{
 					// Characteristics genuinely doesn't exist on this device, nothing to subscribe to
@@ -498,81 +500,80 @@ void BLETransportWindows::ExecuteReadRequest(const FString& DeviceId,
 {
 	FString CacheKey = ComposeCharacteristicCacheKey(DeviceId, CharacteristicUuid);
 
-	if (OpenReadRequest == CacheKey)
-	{
-		// Already handling this requests. Catch on callback.
-		return;
-	}
-
 	if (QueuedReadRequests.Contains(CacheKey))
 	{
-		// Already on the queue. Catch on callback when handling
 		return;
 	}
 
-	if (OpenReadRequest.IsEmpty())
+	// Add to queue
+	FReadRequestEntry Entry{
+		DeviceId,
+		CharacteristicUuid,
+		Characteristic
+	};
+	QueuedReadRequests.Add(CacheKey);
+	CachekeyToReadRequests.Add({ CacheKey, Entry });
+
+	if (!bActivelyProcessingReadRequest)
 	{
-		OpenReadRequest = CacheKey;
-
-		// Important is that we can only ever support one read at a time, distributing if multiple callers arrive is up to us.
-		Characteristic.ReadValueAsync(BluetoothCacheMode::Uncached).Completed(
-			[this, DeviceId, CharacteristicUuid, CacheKey](IAsyncOperation<GattReadResult> const& Op, AsyncStatus Status)
-			{
-				if (Status != AsyncStatus::Completed)
-				{
-					HANDLE Signal = CreateEvent(nullptr, true, false, nullptr);
-
-					Op.Completed([&](auto&&, auto&&)
-						{
-							SetEvent(Signal);
-						}
-					);
-
-					WaitForSingleObject(Signal, INFINITE);
-				}
-
-				FBLECharacteristicData Data(
-					Op.GetResults().Value().data(),
-					Op.GetResults().Value().Length()
-				);
-
-				AsyncTask(ENamedThreads::GameThread, [this, DeviceId, CharacteristicUuid, CacheKey, Data = MoveTemp(Data)]()
-					{
-						OnReadRequestCompleted.ExecuteIfBound(DeviceId, CharacteristicUuid, Data);
-
-						if (!QueuedReadRequests.IsEmpty())
-						{
-							OpenReadRequest = QueuedReadRequests[0];
-							FReadRequestEntry Entry = CachekeyToReadRequests[OpenReadRequest];
-
-							QueuedReadRequests.RemoveAt(0);
-							CachekeyToReadRequests.Remove(OpenReadRequest);
-
-							ExecuteReadRequest(Entry.DeviceId, Entry.CharacteristicUuid, Entry.Characteristic);
-						}
-						else
-						{
-							OpenReadRequest = {};
-						}
-					}
-				);
-			}
-		);
-	}
-	else
-	{
-		// Add to queue
-		QueuedReadRequests.Push(CacheKey);
-		FReadRequestEntry Entry{
-			DeviceId,
-			CharacteristicUuid,
-			Characteristic
-		};
-
-		CachekeyToReadRequests.Add({ CacheKey, Entry });
+		ThreadRecursiveReadRequest(DeviceId, CharacteristicUuid, Characteristic);
 	}
 }
 
+void BLETransportWindows::ThreadRecursiveReadRequest(const FString& DeviceId,
+	const FString& CharacteristicUuid, GattCharacteristic Characteristic)
+{
+	bActivelyProcessingReadRequest = true;
+
+	UE_LOG(LogTemp, Warning, TEXT("ThreadRecursiveReadRequest called!"));
+	// Important is that we can only ever support one read at a time, distributing if multiple callers arrive is up to us.
+	Characteristic.ReadValueAsync(BluetoothCacheMode::Uncached).Completed(
+		[this, DeviceId, CharacteristicUuid](IAsyncOperation<GattReadResult> const& Op, AsyncStatus Status)
+		{
+			if (Status != AsyncStatus::Completed)
+			{
+				HANDLE Signal = CreateEvent(nullptr, true, false, nullptr);
+
+				Op.Completed([&](auto&&, auto&&)
+					{
+						SetEvent(Signal);
+					}
+				);
+
+				WaitForSingleObject(Signal, INFINITE);
+			}
+
+			FBLECharacteristicData Data(
+				Op.GetResults().Value().data(),
+				Op.GetResults().Value().Length()
+			);
+
+			AsyncTask(ENamedThreads::GameThread, [this, DeviceId, CharacteristicUuid, Data = MoveTemp(Data)]()
+				{
+					OnReadRequestCompleted.ExecuteIfBound(DeviceId, CharacteristicUuid, Data);
+
+					FString CacheKey = ComposeCharacteristicCacheKey(DeviceId, CharacteristicUuid);
+
+					// Remove the current read request (this is finished now)
+					QueuedReadRequests.RemoveAt(0);
+					CachekeyToReadRequests.Remove(CacheKey);
+
+					// Check if the requests are still empty
+					if (!QueuedReadRequests.IsEmpty())
+					{
+						FString QueuedRequestKey = QueuedReadRequests[0];
+
+						FReadRequestEntry Entry = CachekeyToReadRequests[QueuedRequestKey];
+
+						ThreadRecursiveReadRequest(Entry.DeviceId, Entry.CharacteristicUuid, Entry.Characteristic);
+					}
+					else
+					{
+						bActivelyProcessingReadRequest = false;
+					}
+				});
+		});
+}
 
 void BLETransportWindows::ExecuteWriteRequest(const FString& DeviceId,
 	const FString& CharacteristicUuid, GattCharacteristic Characteristic,
@@ -646,11 +647,6 @@ void BLETransportWindows::OnAdvertisementReceived(
 	FBLEScanResult Result;
 	Result.DeviceId = FormatDeviceId(Args.BluetoothAddress());
 	Result.DeviceLocalName = winrt::to_hstring(Args.Advertisement().LocalName()).c_str();
-
-	if (Result.DeviceLocalName.Equals("Instinct Crossover"))
-	{
-		Result.DeviceLocalName.Append(" ");
-	}
 
 	for (const winrt::guid& uuid : Args.Advertisement().ServiceUuids())
 	{

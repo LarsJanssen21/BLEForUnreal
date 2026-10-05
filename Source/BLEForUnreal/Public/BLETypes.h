@@ -21,5 +21,6 @@ UENUM(BlueprintType)
 enum class EBLEDeviceCategory : uint8
 {
 	Any,
-	HeartRate
+	HeartRate,
+	FitnessMachine
 };
