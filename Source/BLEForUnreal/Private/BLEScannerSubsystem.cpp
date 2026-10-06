@@ -26,6 +26,7 @@ void UBLEScannerSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 		Transport->OnConnectComplete.BindUObject(this, &UBLEScannerSubsystem::HandleTransportConnectionComplete);
 		Transport->OnCharacteristicUpdated.BindUObject(this, &UBLEScannerSubsystem::HandleTransportCharacteristicUpdated);
 		Transport->OnReadRequestCompleted.BindUObject(this, &UBLEScannerSubsystem::HandleTransportReadRequestCompleted);
+		Transport->OnWriteRequestCompleted.BindUObject(this, &UBLEScannerSubsystem::HandleTransportWriteRequesCompleted);
 	}
 }
 
@@ -161,6 +162,14 @@ void UBLEScannerSubsystem::HandleTransportWriteRequesCompleted(const FString& De
 			Device->HandleCharacteristicData(CharacteristicUuid, Data);
 		}
 	}
+}
+
+void UBLEScannerSubsystem::HandleTransportWriteIndicationReceived(
+	const FString& DeviceId,
+	const FString& CharacteristicUuid,
+	const FBLECharacteristicData& Data)
+{
+
 }
 
 void UBLEScannerSubsystem::StartScan()

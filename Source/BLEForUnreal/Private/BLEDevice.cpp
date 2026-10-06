@@ -7,6 +7,7 @@
 #include "Parser/IBLECharacteristicParser.h"
 #include "BLEMetricSubscription.h"
 #include "BLEReadRequest.h"
+#include "BLEWriteRequest.h"
 
 UBLEDevice::UBLEDevice() = default;
 UBLEDevice::UBLEDevice(FVTableHelper& Helper) : Super(Helper) {}
@@ -124,6 +125,8 @@ UBLEReadRequest* UBLEDevice::RequestValueRead(FName ReadName)
 
 UBLEWriteRequest* UBLEDevice::SubmitValueWriteInt32(FName WriteName, int32 InValue)
 {
+	ensureMsgf(false, TEXT("Unstable, do not use!"));
+
 	IBLECharacteristicParser* Parser = FindWriteParser(WriteName);
 
 	if (!Parser)
@@ -136,12 +139,21 @@ UBLEWriteRequest* UBLEDevice::SubmitValueWriteInt32(FName WriteName, int32 InVal
 		static_cast<uint32_t>(InValue)
 	);
 
+	UBLEWriteRequest* Request = NewObject<UBLEWriteRequest>(this);
+	Request->WriteName = WriteName;
+	if (Parser->SupportsIndicate())
+	{
+		Request->bWriteIndicationCalled = true;
+	}
+
+	WriteRequests.Add(Request);
+
 	Transport->WriteCharacteristic(
 		DeviceId, Parser->GetServiceUuid(), Parser->GetCharacteristicUuid(),
-		Data
+		Data, Parser->SupportsIndicate()
 	);
 
-	return nullptr;
+	return Request;
 }
 
 void UBLEDevice::HandleCharacteristicData(const FString& CharacteristicUuid, const FBLECharacteristicData& Data)
@@ -192,8 +204,22 @@ void UBLEDevice::HandleCharacteristicData(const FString& CharacteristicUuid, con
 	{
 		for (const FBLEWrite& Write : (*FoundParser)->ParseWriteRequest(Data))
 		{
-
+			
 		}
+	}
+}
+
+void UBLEDevice::HandleIndicateCharacteristicData(const FString& CharacteristicUuid, const FBLECharacteristicData& InData)
+{
+	IBLECharacteristicParser* const* FoundParser = ActiveParsers.Find(CharacteristicUuid);
+	if (!FoundParser)
+	{
+		return;
+	}
+
+	for (const FBLEWrite& Write: (*FoundParser)->ParseWriteRequest(InData))
+	{
+
 	}
 }
 

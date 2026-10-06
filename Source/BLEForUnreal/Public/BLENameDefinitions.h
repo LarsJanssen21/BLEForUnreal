@@ -46,4 +46,12 @@ namespace BLEWriteNames {
 	*/
 	const FName HeartRateControlPoint = FName("heartrate.controlpoint");
 
+	/*
+	 * Fitness machine service specification
+	 * 
+	*/
+
+	// FMS Control point
+	const FName FMSCP_RequestControl = FName("fms.cp.requestcontrol");
+
 }

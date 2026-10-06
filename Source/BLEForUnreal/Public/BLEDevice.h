@@ -84,6 +84,7 @@ public:
 	 * Used by UBLEScannerSubsystem to pass through updates on all charcateristic
 	*/
 	void HandleCharacteristicData(const FString& CharacteristicUuid, const FBLECharacteristicData& Data);
+	void HandleIndicateCharacteristicData(const FString& CharacteristicUuid, const FBLECharacteristicData& InData);
 
 private:
 	IBLECharacteristicParser* FindWriteParser(FName WriteName);
@@ -118,6 +119,9 @@ private:
 	TArray<TObjectPtr<UBLEMetricSubscription>> ActiveSubscriptions;
 	UPROPERTY()
 	TMap<FName, FReadArray> ReadRequests;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UBLEWriteRequest>> WriteRequests;
 
 	TMap<FName, float> LatestMetricValues;
 };

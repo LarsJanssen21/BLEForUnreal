@@ -8,7 +8,8 @@ virtual TArray<FName> GetSupportedReadRequests() const override { return { __VA_
 virtual TArray<FName> GetSupportedWriteSubmits() const override { return {}; } \
 virtual TArray<FBLEMetric> ParseNotify(const TArray<uint8>& Data) override { return {}; } \
 virtual TArray<FBLEWrite> ParseWriteRequest(const TArray<uint8>& Data) override { return {}; } \
-virtual TArray<uint8> PrepareWriteRequestBuffer(FName WriteName, uint32_t Value) { return {}; }
+virtual TArray<uint8> PrepareWriteRequestBuffer(FName WriteName, uint32_t Value) { return {}; } \
+virtual bool SupportsIndicate() const override { return false; }
 
 #define METRIC_ONLY_CHARACTERISTIC_IMPLEMENTATION(ServiceUuid, CharUuid, ...) \
 virtual FString GetServiceUuid() const override { return ServiceUuid; } \
@@ -18,7 +19,8 @@ virtual TArray<FName> GetSupportedReadRequests() const override { return {}; } \
 virtual TArray<FName> GetSupportedWriteSubmits() const override { return {}; } \
 virtual TArray<FBLERead> ParseReadRequest(const TArray<uint8>& Data) override { return {}; } \
 virtual TArray<FBLEWrite> ParseWriteRequest(const TArray<uint8>& Data) override { return {}; } \
-virtual TArray<uint8> PrepareWriteRequestBuffer(FName WriteName, uint32_t Value) { return {}; }
+virtual TArray<uint8> PrepareWriteRequestBuffer(FName WriteName, uint32_t Value) { return {}; } \
+virtual bool SupportsIndicate() const override { return false; }
 
 #define WRITE_ONLY_CHARACTERISTIC_IMPLEMENTATION(ServiceUuid, CharUuid, ...) \
 virtual FString GetServiceUuid() const override { return ServiceUuid; } \
@@ -140,5 +142,9 @@ public:
 	 */
 	virtual void Reset() = 0;
 
-	virtual TArray<uint8> PrepareWriteRequestBuffer(FName WriteName, uint32_t Value) = 0;
+	/*	
+	 * Prepares data packet for write request	
+	*/
+	virtual TArray<uint8> PrepareWriteRequestBuffer(FName WriteName, uint32 Value) = 0;
+	virtual bool SupportsIndicate() const = 0;
 };

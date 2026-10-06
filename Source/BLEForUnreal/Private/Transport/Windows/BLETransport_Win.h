@@ -38,7 +38,8 @@ public:
 		const FString& ServiceUuid, const FString& CharUuid) override;
 
 	virtual void WriteCharacteristic(const FString& DeviceId,
-		const FString& ServiceUuid, const FString& CharUuid, FBLECharacteristicData InData) override;
+		const FString& ServiceUuid, const FString& CharUuid, FBLECharacteristicData InData,
+		bool bSupportsIndicate) override;
 
 private:
 	inline FString FormatDeviceId(uint64_t BluetoothAddress)
@@ -75,6 +76,12 @@ private:
 		const FString& CharacteristicUuid, GattCharacteristic Characteristic,
 		FBLECharacteristicData InData);
 
+	void ThreadRecursiveWriteRequest(
+		const FString& DeviceId,
+		const FString& CharacteristicUuid, GattCharacteristic Characteristic,
+		const FBLECharacteristicData& InData
+	);
+
 private:
 	/*	Callbacks	*/
 	void OnAdvertisementReceived(
@@ -95,7 +102,7 @@ private:
 		FString DeviceId;
 		FString CharacteristicUuid;
 		GattCharacteristic Characteristic;
-		FBLECharacteristicData Payload;
+		FBLECharacteristicData BytePacket;
 
 	};
 
@@ -105,11 +112,11 @@ private:
 	TMap<FString /*Cache key*/, GattCharacteristic> CachedCharacteristics;
 	TMap<FString /*Cache key*/, winrt::event_token> NotificationTokens;
 
-	bool bActivelyProcessingReadRequest = false;
+	bool bActivelyProcessingReadRequests = false;
 	TArray<FString /*Cache key*/> QueuedReadRequests = {};
 	TMap<FString, FReadRequestEntry> CachekeyToReadRequests;
 
-	TOptional<FWriteRequestEntry> OpenWriteRequest;
+	bool bActivelyProcessingWriteRequests = false;
 	TArray<FWriteRequestEntry> QueuedWriteRequests = {};
 
 	BluetoothLEAdvertisementWatcher AdvertisementWatcher;

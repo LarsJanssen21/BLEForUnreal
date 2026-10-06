@@ -40,5 +40,6 @@ namespace BLEGattUuids {
 	 * Fitness Machine Service
 	*/
 	const FString FitnessMachineService = FString(TEXT("00001826-0000-1000-8000-00805f9b34fb"));
+	const FString FMSControlPoint = FString(TEXT("00002ad9-0000-1000-8000-00805f9b34fb"));
 
 }

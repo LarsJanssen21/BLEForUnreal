@@ -55,7 +55,7 @@ public:
 		return { { BLEWriteNames::HeartRateControlPoint, static_cast<int32>(Data[0]) } };
 	}
 
-	virtual TArray<uint8_t> PrepareWriteRequestBuffer(FName WriteName, uint32_t Value) override
+	virtual TArray<uint8_t> PrepareWriteRequestBuffer(FName WriteName, uint32 Value) override
 	{
 		// Only incoming value will every be heartrate.controlpoint
 		if (WriteName != BLEWriteNames::HeartRateControlPoint)
@@ -67,4 +67,6 @@ public:
 	}
 
 	virtual void Reset() override { }
+
+	virtual bool SupportsIndicate() const override { return false; }
 };

@@ -273,7 +273,8 @@ void BLETransportWindows::ReadCharacteristic(const FString& DeviceId,
 }
 
 void BLETransportWindows::WriteCharacteristic(const FString& DeviceId,
-	const FString& ServiceUuid, const FString& CharUuid, FBLECharacteristicData InData)
+	const FString& ServiceUuid, const FString& CharUuid, FBLECharacteristicData InData, 
+	bool bSupportsIndicate)
 {
 	const FString CacheKey = ComposeCharacteristicCacheKey(DeviceId, CharUuid);
 
@@ -294,7 +295,7 @@ void BLETransportWindows::WriteCharacteristic(const FString& DeviceId,
 	Service->GetCharacteristicsForUuidAsync(
 		winrt::guid(TCHAR_TO_UTF8(*CharUuid)), BluetoothCacheMode::Uncached)
 		.Completed(
-			[this, DeviceId, ServiceUuid, CharUuid, CacheKey, InData]
+			[this, DeviceId, ServiceUuid, CharUuid, CacheKey, InData, bSupportsIndicate]
 			(IAsyncOperation<GattCharacteristicsResult> const& Op, AsyncStatus Status)
 			{
 				if (Status != AsyncStatus::Completed)
@@ -331,6 +332,27 @@ void BLETransportWindows::WriteCharacteristic(const FString& DeviceId,
 					CachedCharacteristics.Add({ CacheKey, Characteristic });
 					}
 				);
+
+				if (bSupportsIndicate)
+				{
+					// Indication response
+					Characteristic.ValueChanged(
+						[this, DeviceId, CharUuid](GattCharacteristic const&, GattValueChangedEventArgs const& Args)
+						{
+							TArray<uint8> ResponsePacketBuffer(
+								Args.CharacteristicValue().data(),
+								Args.CharacteristicValue().Length()
+							);
+
+							AsyncTask(ENamedThreads::GameThread, [this, DeviceId, CharUuid, ResponsePacketBuffer]()
+								{
+									OnWriteIndicationReceived.ExecuteIfBound(DeviceId, CharUuid, ResponsePacketBuffer);
+								});
+						});
+
+					Characteristic.WriteClientCharacteristicConfigurationDescriptorAsync(
+						GattClientCharacteristicConfigurationDescriptorValue::Indicate);
+				}
 
 				ExecuteWriteRequest(DeviceId, CharUuid, Characteristic, InData);
 			}
@@ -514,8 +536,10 @@ void BLETransportWindows::ExecuteReadRequest(const FString& DeviceId,
 	QueuedReadRequests.Add(CacheKey);
 	CachekeyToReadRequests.Add({ CacheKey, Entry });
 
-	if (!bActivelyProcessingReadRequest)
+	if (!bActivelyProcessingReadRequests)
 	{
+		bActivelyProcessingReadRequests = true;
+
 		ThreadRecursiveReadRequest(DeviceId, CharacteristicUuid, Characteristic);
 	}
 }
@@ -523,7 +547,6 @@ void BLETransportWindows::ExecuteReadRequest(const FString& DeviceId,
 void BLETransportWindows::ThreadRecursiveReadRequest(const FString& DeviceId,
 	const FString& CharacteristicUuid, GattCharacteristic Characteristic)
 {
-	bActivelyProcessingReadRequest = true;
 
 	// Important is that we can only ever support one read at a time, distributing if multiple callers arrive is up to us.
 	Characteristic.ReadValueAsync(BluetoothCacheMode::Uncached).Completed(
@@ -568,7 +591,7 @@ void BLETransportWindows::ThreadRecursiveReadRequest(const FString& DeviceId,
 					}
 					else
 					{
-						bActivelyProcessingReadRequest = false;
+						bActivelyProcessingReadRequests = false;
 					}
 				});
 		});
@@ -578,36 +601,51 @@ void BLETransportWindows::ExecuteWriteRequest(const FString& DeviceId,
 	const FString& CharacteristicUuid, GattCharacteristic Characteristic,
 	FBLECharacteristicData InData)
 {
-	if (OpenWriteRequest.IsSet())
-	{
-		// Request in progress, add to queue
-		FWriteRequestEntry Entry{
-			DeviceId,
-			CharacteristicUuid,
-			Characteristic,
-			InData
-		};
+	// Request in progress, add to queue
+	FWriteRequestEntry Entry{
+		DeviceId,
+		CharacteristicUuid,
+		Characteristic,
+		InData
+	};
 
-		QueuedWriteRequests.Push(Entry);
-		return;
+	QueuedWriteRequests.Push(Entry);
+
+	if (!bActivelyProcessingWriteRequests)
+	{
+		bActivelyProcessingReadRequests = true;
+
+		ThreadRecursiveWriteRequest(DeviceId, CharacteristicUuid, Characteristic,
+			InData
+		);
 	}
+}
+
+void BLETransportWindows::ThreadRecursiveWriteRequest(
+	const FString& DeviceId,
+	const FString& CharacteristicUuid, GattCharacteristic Characteristic,
+	const FBLECharacteristicData& InData)
+{
 
 	winrt::Windows::Storage::Streams::Buffer buffer(InData.Num());
 	memcpy(buffer.data(), InData.GetData(), InData.Num());
+
 	Characteristic.WriteValueWithResultAsync(buffer).Completed(
-		[this, DeviceId, CharacteristicUuid](IAsyncOperation<GattWriteResult> Op, AsyncStatus Status) 
+		[this, DeviceId, CharacteristicUuid](IAsyncOperation<GattWriteResult> Op, AsyncStatus Status)
 		{
 			if (Status != AsyncStatus::Completed)
 			{
 				HANDLE Signal = CreateEvent(nullptr, true, false, nullptr);
 
 				Op.Completed([&](auto&&, auto&&) {
-						SetEvent(Signal);
+					SetEvent(Signal);
 					}
 				);
 
 				WaitForSingleObject(Signal, INFINITE);
 			}
+
+
 
 			bool bSuccess = false;
 			if (Op.GetResults().Status() == GattCommunicationStatus::Success)
@@ -619,19 +657,20 @@ void BLETransportWindows::ExecuteWriteRequest(const FString& DeviceId,
 				{
 					OnWriteRequestCompleted.ExecuteIfBound(DeviceId, CharacteristicUuid, bSuccess);
 
+					QueuedWriteRequests.RemoveAt(0);
+
 					if (!QueuedWriteRequests.IsEmpty())
 					{
-						OpenWriteRequest = QueuedWriteRequests[0];
-						QueuedWriteRequests.RemoveAt(0);
-
-						const FWriteRequestEntry& Entry = OpenWriteRequest.GetValue();
-
-						ExecuteWriteRequest(Entry.DeviceId, Entry.CharacteristicUuid,
-							Entry.Characteristic, Entry.Payload);
+						const FWriteRequestEntry& Entry = QueuedWriteRequests[0];
+						ThreadRecursiveWriteRequest(
+							Entry.DeviceId,
+							Entry.CharacteristicUuid,
+							Entry.Characteristic,
+							Entry.BytePacket);
 					}
 					else
 					{
-						OpenWriteRequest.Reset();
+						bActivelyProcessingWriteRequests = false;
 					}
 				}
 			);
