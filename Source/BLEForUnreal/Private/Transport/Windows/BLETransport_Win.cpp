@@ -351,7 +351,45 @@ void BLETransportWindows::WriteCharacteristic(const FString& DeviceId,
 						});
 
 					Characteristic.WriteClientCharacteristicConfigurationDescriptorAsync(
-						GattClientCharacteristicConfigurationDescriptorValue::Indicate);
+						GattClientCharacteristicConfigurationDescriptorValue::Indicate).Completed(
+							[this](IAsyncOperation<GattCommunicationStatus> const& Op, AsyncStatus Status)
+							{
+								if (Status != AsyncStatus::Completed)
+								{
+									HANDLE Signal = CreateEvent(nullptr, true, false, nullptr);
+
+									Op.Completed([&](auto&&, auto&&)
+										{
+											SetEvent(Signal);
+										});
+
+									WaitForSingleObject(Signal, INFINITE);
+								}
+
+								switch (Op.GetResults())
+								{
+									case GattCommunicationStatus::Success:
+									{
+										UE_LOG(LogTemp, Warning, TEXT("Subscribing to characteistic indicate: Success"));
+										break;
+									}
+									case GattCommunicationStatus::AccessDenied:
+									{
+										UE_LOG(LogTemp, Warning, TEXT("Subscribing to characteistic indicate: AccessDenied"));
+										break;
+									}
+									case GattCommunicationStatus::ProtocolError:
+									{
+										UE_LOG(LogTemp, Warning, TEXT("Subscribing to characteistic indicate: ProtoclError"));
+										break;
+									}
+									case GattCommunicationStatus::Unreachable:
+									{
+										UE_LOG(LogTemp, Warning, TEXT("Subscribing to characteistic indicate: Unreachable"));
+										break;
+									}
+								}
+							});
 				}
 
 				ExecuteWriteRequest(DeviceId, CharUuid, Characteristic, InData);
@@ -613,7 +651,7 @@ void BLETransportWindows::ExecuteWriteRequest(const FString& DeviceId,
 
 	if (!bActivelyProcessingWriteRequests)
 	{
-		bActivelyProcessingReadRequests = true;
+		bActivelyProcessingWriteRequests = true;
 
 		ThreadRecursiveWriteRequest(DeviceId, CharacteristicUuid, Characteristic,
 			InData
