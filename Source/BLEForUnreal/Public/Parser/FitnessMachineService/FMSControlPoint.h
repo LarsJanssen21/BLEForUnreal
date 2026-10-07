@@ -12,7 +12,7 @@ public:
 	WRITE_ONLY_CHARACTERISTIC_IMPLEMENTATION(
 		BLEGattUuids::FitnessMachineService,
 		BLEGattUuids::FMSControlPoint,
-		BLEWriteNames::FMSCP_RequestControl
+		BLEWriteNames::FMSCP_RequestControl, BLEWriteNames::FMSCP_TargetPower
 	);
 
 	virtual TArray<FBLEWrite> ParseWriteRequest(const TArray<uint8>& Data) override
@@ -43,6 +43,16 @@ public:
 			{
 				break;
 			}
+
+			case 0x05:
+			{
+				Buffer.SetNum(3);
+				int16& Wattage = *reinterpret_cast<int16*>(&Buffer[1]);
+
+				Wattage = 104;
+
+				break;
+			}
 		}
 
 		return Buffer;
@@ -62,6 +72,11 @@ private:
 				return BLEWriteNames::FMSCP_RequestControl;
 				break;
 			}
+			case 0x05:
+			{
+				return BLEWriteNames::FMSCP_TargetPower;
+				break;
+			}
 		}
 	}
 
@@ -70,6 +85,10 @@ private:
 		if (WriteName == BLEWriteNames::FMSCP_RequestControl)
 		{
 			return 0x00;
+		}
+		else if (WriteName == BLEWriteNames::FMSCP_TargetPower)
+		{
+			return 0x05;
 		}
 
 		return 0xff;

@@ -160,6 +160,7 @@ void UBLEScannerSubsystem::HandleTransportWriteRequesCompleted(const FString& De
 			FBLECharacteristicData Data = {};
 			Data.Add(bSuccess ? 0 : 1);
 
+			// TODO: This will currently never be called!
 			Device->HandleCharacteristicData(CharacteristicUuid, Data);
 		}
 	}
@@ -170,7 +171,13 @@ void UBLEScannerSubsystem::HandleTransportWriteIndicationReceived(
 	const FString& CharacteristicUuid,
 	const FBLECharacteristicData& Data)
 {
-	UE_LOG(LogTemp, Warning, TEXT("Data received!"));
+	for (UBLEDevice* Device : ConnectedDevices)
+	{
+		if (Device && Device->GetDeviceId() == DeviceId)
+		{
+			Device->HandleIndicateCharacteristicData(CharacteristicUuid, Data);
+		}
+	}
 }
 
 void UBLEScannerSubsystem::StartScan()

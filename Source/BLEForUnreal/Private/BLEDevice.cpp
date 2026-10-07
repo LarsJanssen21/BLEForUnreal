@@ -125,10 +125,12 @@ UBLEReadRequest* UBLEDevice::RequestValueRead(FName ReadName)
 
 UBLEWriteRequest* UBLEDevice::SubmitValueWriteInt32(FName WriteName, int32 InValue)
 {
+#if 0
 	if (!ensureMsgf(false, TEXT("Unstable, do not use!")))
 	{
 		return nullptr;
 	}
+#endif
 
 	IBLECharacteristicParser* Parser = FindWriteParser(WriteName);
 
@@ -202,14 +204,6 @@ void UBLEDevice::HandleCharacteristicData(const FString& CharacteristicUuid, con
 			}
 		}
 	}
-
-	if (!Parser->GetSupportedWriteSubmits().IsEmpty())
-	{
-		for (const FBLEWrite& Write : (*FoundParser)->ParseWriteRequest(Data))
-		{
-			
-		}
-	}
 }
 
 void UBLEDevice::HandleIndicateCharacteristicData(const FString& CharacteristicUuid, const FBLECharacteristicData& InData)
@@ -222,8 +216,14 @@ void UBLEDevice::HandleIndicateCharacteristicData(const FString& CharacteristicU
 
 	for (const FBLEWrite& Write: (*FoundParser)->ParseWriteRequest(InData))
 	{
-
+		// Need a unique ID of some sort to identify which write request this needs to be broadcast to.
+		for (UBLEWriteRequest* Request : WriteRequests)
+		{
+			Request->OnWriteIndicationReceived.Broadcast(static_cast<uint8>(Write.Value));
+		}
 	}
+
+	WriteRequests.Empty();
 }
 
 IBLECharacteristicParser* UBLEDevice::FindWriteParser(FName WriteName)

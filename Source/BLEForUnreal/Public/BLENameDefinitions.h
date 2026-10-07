@@ -53,5 +53,6 @@ namespace BLEWriteNames {
 
 	// FMS Control point
 	const FName FMSCP_RequestControl = FName("fms.cp.requestcontrol");
+	const FName FMSCP_TargetPower = FName("fms.cp.targetpower");
 
 }
