@@ -64,5 +64,8 @@ public class BLEForUnreal : ModuleRules
 				"cppwinrt")
 				);
 		}
+
+		// Needed for packaging as winrt forces c++ exceptions.
+		bEnableExceptions = true;
 	}
 }
