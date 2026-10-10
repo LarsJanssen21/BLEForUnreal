@@ -78,6 +78,8 @@ private:
 				break;
 			}
 		}
+
+		return {};
 	}
 
 	uint8 WriteNameToOpCode(FName WriteName)

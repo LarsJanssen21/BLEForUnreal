@@ -33,10 +33,7 @@ void UBLEScannerSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 
 void UBLEScannerSubsystem::Deinitialize()
 {
-	for (UBLEScanRequest* Request : ScanRequests)
-	{
-		UnregisterScanRequest(Request);
-	}
+	ScanRequests.Empty();
 
 	StopScan();
 

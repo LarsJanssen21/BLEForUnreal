@@ -16,6 +16,8 @@
 #include "CoreMinimal.h"
 
 
+
+
 BLETransportWindows::BLETransportWindows()
 {
 
@@ -366,40 +368,6 @@ void BLETransportWindows::WriteCharacteristic(const FString& DeviceId,
 									WaitForSingleObject(Signal, INFINITE);
 								}
 
-								Characteristic.ReadClientCharacteristicConfigurationDescriptorAsync().Completed(
-									[](IAsyncOperation<GattReadClientCharacteristicConfigurationDescriptorResult> const& Op, AsyncStatus Status)
-									{
-										UE_LOG(LogTemp, Warning, TEXT("CCCD status: %s"),
-											Op.GetResults().ClientCharacteristicConfigurationDescriptor() == GattClientCharacteristicConfigurationDescriptorValue::Indicate ?
-											TEXT("Indicate") :
-											TEXT("Notify")
-										);
-									});
-
-								switch (Op.GetResults())
-								{
-									case GattCommunicationStatus::Success:
-									{
-										UE_LOG(LogTemp, Warning, TEXT("Subscribing to characteristic indicate: Success"));
-										break;
-									}
-									case GattCommunicationStatus::AccessDenied:
-									{
-										UE_LOG(LogTemp, Warning, TEXT("Subscribing to characteristic indicate: AccessDenied"));
-										break;
-									}
-									case GattCommunicationStatus::ProtocolError:
-									{
-										UE_LOG(LogTemp, Warning, TEXT("Subscribing to characteristic indicate: ProtoclError"));
-										break;
-									}
-									case GattCommunicationStatus::Unreachable:
-									{
-										UE_LOG(LogTemp, Warning, TEXT("Subscribing to characteristic indicate: Unreachable"));
-										break;
-									}
-								}
-
 								ExecuteWriteRequest(DeviceId, CharUuid, Characteristic, InData);
 							});
 				}
@@ -680,9 +648,7 @@ void BLETransportWindows::ThreadRecursiveWriteRequest(
 {
 
 	winrt::Windows::Storage::Streams::Buffer buffer(InData.Num());
-	uint32 length = buffer.Length();
 	buffer.Length(InData.Num());
-	length = buffer.Length();
 	memcpy(buffer.data(), InData.GetData(), InData.Num());
 
 	Characteristic.WriteValueWithResultAsync(buffer, GattWriteOption::WriteWithResponse).Completed(
