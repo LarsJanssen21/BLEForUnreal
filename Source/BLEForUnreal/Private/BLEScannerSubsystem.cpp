@@ -33,6 +33,30 @@ void UBLEScannerSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 
 void UBLEScannerSubsystem::Deinitialize()
 {
+	bool bActiveSubscriptions = false;
+
+	FString ActiveSubscriptionWarningString = 
+		TEXT(	"BLEScannerSubsystem: Active subscriptions on BLEDevices found on cleanup. " 
+				"Suspected discarding or overwriting of BLEMetricSubscription objects.");
+
+	for (UBLEDevice* Device : ConnectedDevices)
+	{
+		if (Device->GetActiveMetricSubscriptionCount() > 0)
+		{
+			ActiveSubscriptionWarningString +=
+				FString::Printf(TEXT("\nBLEScannerSubsystem: UBLEDevice (%s)  Active subscriptions (%d)"),
+					*Device->GetDeviceId(), Device->GetActiveMetricSubscriptionCount());
+
+			bActiveSubscriptions = true;
+			break;
+		}
+	}
+
+	if (bActiveSubscriptions)
+	{
+		FMessageLog("PIE").Warning(FText::FromString(ActiveSubscriptionWarningString));
+	}
+
 	ScanRequests.Empty();
 
 	StopScan();

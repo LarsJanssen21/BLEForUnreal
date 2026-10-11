@@ -86,6 +86,8 @@ public:
 	void HandleCharacteristicData(const FString& CharacteristicUuid, const FBLECharacteristicData& Data);
 	void HandleIndicateCharacteristicData(const FString& CharacteristicUuid, const FBLECharacteristicData& InData);
 
+	int32 GetActiveMetricSubscriptionCount() const { return ActiveSubscriptions.Num(); }
+
 private:
 	IBLECharacteristicParser* FindWriteParser(FName WriteName);
 
