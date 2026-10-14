@@ -349,10 +349,6 @@ void BLETransportWindows::DiscoverServicesAndComplete(BluetoothLEDevice Device, 
 	Device.GetGattServicesAsync(BluetoothCacheMode::Uncached).Completed(
 		[this, Device, DeviceId](IAsyncOperation<GattDeviceServicesResult> const& Op, AsyncStatus Status)
 		{
-			try {
-				Op.Completed();
-			}
-
 			GattCommunicationStatus GattStatus = Op.GetResults().Status();
 			bool bDiscovereySucceeded = GattStatus == GattCommunicationStatus::Success;
 
