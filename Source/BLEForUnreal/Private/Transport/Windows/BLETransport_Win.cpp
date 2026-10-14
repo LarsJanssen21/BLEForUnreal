@@ -83,20 +83,6 @@ void BLETransportWindows::ConnectToDevice(const FString& DeviceId)
 			// TODO: Handle AsyncStatus 
 			BluetoothLEDevice Device = { nullptr };
 
-			if (Status != AsyncStatus::Completed)
-			{
-				HANDLE Signal = CreateEvent(nullptr, true, false, nullptr);
-
-				Op.Completed([&](auto&&, auto&&)
-					{
-						SetEvent(Signal);
-					}
-				);
-
-				WaitForSingleObject(Signal, INFINITE);
-			}
-
-
 			if (Status == AsyncStatus::Completed)
 			{
 				Device = Op.GetResults();
@@ -155,19 +141,6 @@ void BLETransportWindows::SubscribeToCharacteristic(const FString& DeviceId,
 			[this, DeviceId, ServiceUuid, CharUuid, CacheKey]
 			(IAsyncOperation<GattCharacteristicsResult> const& Op, AsyncStatus Status)
 			{
-				if (Status != AsyncStatus::Completed)
-				{
-					HANDLE Signal = CreateEvent(nullptr, true, false, nullptr);
-
-					Op.Completed([&](auto&&, auto&&)
-						{
-							SetEvent(Signal);
-						}
-					);
-
-					WaitForSingleObject(Signal, INFINITE);
-				}
-
 				if (Op.GetResults().Status() != GattCommunicationStatus::Success ||
 					Op.GetResults().Characteristics().Size() == 0)
 				{
@@ -237,19 +210,6 @@ void BLETransportWindows::ReadCharacteristic(const FString& DeviceId,
 			[this, DeviceId, ServiceUuid, CharUuid, CacheKey]
 			(IAsyncOperation<GattCharacteristicsResult> const& Op, AsyncStatus Status)
 			{
-				if (Status != AsyncStatus::Completed)
-				{
-					HANDLE Signal = CreateEvent(nullptr, true, false, nullptr);
-
-					Op.Completed([&](auto&&, auto&&)
-						{
-							SetEvent(Signal);
-						}
-					);
-
-					WaitForSingleObject(Signal, INFINITE);
-				}
-
 				if (Op.GetResults().Status() != GattCommunicationStatus::Success ||
 					Op.GetResults().Characteristics().Size() == 0)
 				{
@@ -300,19 +260,6 @@ void BLETransportWindows::WriteCharacteristic(const FString& DeviceId,
 			[this, DeviceId, ServiceUuid, CharUuid, CacheKey, InData, bSupportsIndicate]
 			(IAsyncOperation<GattCharacteristicsResult> const& Op, AsyncStatus Status)
 			{
-				if (Status != AsyncStatus::Completed)
-				{
-					HANDLE Signal = CreateEvent(nullptr, true, false, nullptr);
-
-					Op.Completed([&](auto&&, auto&&)
-						{
-							SetEvent(Signal);
-						}
-					);
-
-					WaitForSingleObject(Signal, INFINITE);
-				}
-
 				GattCommunicationStatus GattStatus = Op.GetResults().Status();
 
 				if (GattStatus != GattCommunicationStatus::Success ||
@@ -356,18 +303,6 @@ void BLETransportWindows::WriteCharacteristic(const FString& DeviceId,
 						GattClientCharacteristicConfigurationDescriptorValue::Indicate).Completed(
 							[this, DeviceId, CharUuid, InData, Characteristic](IAsyncOperation<GattCommunicationStatus> const& Op, AsyncStatus Status)
 							{
-								if (Status != AsyncStatus::Completed)
-								{
-									HANDLE Signal = CreateEvent(nullptr, true, false, nullptr);
-
-									Op.Completed([&](auto&&, auto&&)
-										{
-											SetEvent(Signal);
-										});
-
-									WaitForSingleObject(Signal, INFINITE);
-								}
-
 								ExecuteWriteRequest(DeviceId, CharUuid, Characteristic, InData);
 							});
 				}
@@ -414,17 +349,8 @@ void BLETransportWindows::DiscoverServicesAndComplete(BluetoothLEDevice Device, 
 	Device.GetGattServicesAsync(BluetoothCacheMode::Uncached).Completed(
 		[this, Device, DeviceId](IAsyncOperation<GattDeviceServicesResult> const& Op, AsyncStatus Status)
 		{
-			if (Status != AsyncStatus::Completed)
-			{
-				HANDLE Signal = CreateEvent(nullptr, true, false, nullptr);
-
-				Op.Completed([&](auto&&, auto&&)
-					{
-						SetEvent(Signal);
-					}
-				);
-				
-				WaitForSingleObject(Signal, INFINITE);
+			try {
+				Op.Completed();
 			}
 
 			GattCommunicationStatus GattStatus = Op.GetResults().Status();
@@ -432,29 +358,12 @@ void BLETransportWindows::DiscoverServicesAndComplete(BluetoothLEDevice Device, 
 
 			if (!bDiscovereySucceeded)
 			{
-				if (GattStatus == GattCommunicationStatus::Unreachable)
-				{
-					for (uint32_t i = 0; i < GattStatusReconnectAttempts; i++)
+				AsyncTask(ENamedThreads::GameThread, [this, DeviceId]()
 					{
-						std::this_thread::sleep_for(std::chrono::milliseconds(GattStatusReconnectDelayMs));
-						if (Op.GetResults().Status() == GattCommunicationStatus::Success)
-						{
-							bDiscovereySucceeded = true;
-							continue;
-						}
-					}
-				}
-
-				if (!bDiscovereySucceeded)
-				{
-					AsyncTask(ENamedThreads::GameThread, [this, DeviceId]()
-						{
-							PendingConnections.Remove(DeviceId);
-							OnConnectComplete.ExecuteIfBound(DeviceId, {}, false);
-						}
-					);
-					return;
-				}
+						PendingConnections.Remove(DeviceId);
+						OnConnectComplete.ExecuteIfBound(DeviceId, {}, false);
+					});
+				return;
 			}
 
 			FConnectedDeviceEntry Entry;
@@ -516,19 +425,6 @@ void BLETransportWindows::EnableNotifications(const FString& DeviceId,
 			[this, DeviceId, CharacteristicUuid]
 			(IAsyncOperation<GattCommunicationStatus> const& Op, AsyncStatus Status)
 			{
-				if (Status != AsyncStatus::Completed)
-				{
-					HANDLE Signal = CreateEvent(nullptr, true, false, nullptr);
-
-					Op.Completed([&](auto&&, auto&&)
-						{
-							SetEvent(Signal);
-						}
-					);
-
-					WaitForSingleObject(Signal, INFINITE);
-				}
-
 				if (Op.GetResults() != GattCommunicationStatus::Success)
 				{
 					UE_LOG(LogTemp, Warning, TEXT("Temporary not succesfull"));
@@ -572,19 +468,6 @@ void BLETransportWindows::ThreadRecursiveReadRequest(const FString& DeviceId,
 	Characteristic.ReadValueAsync(BluetoothCacheMode::Uncached).Completed(
 		[this, DeviceId, CharacteristicUuid](IAsyncOperation<GattReadResult> const& Op, AsyncStatus Status)
 		{
-			if (Status != AsyncStatus::Completed)
-			{
-				HANDLE Signal = CreateEvent(nullptr, true, false, nullptr);
-
-				Op.Completed([&](auto&&, auto&&)
-					{
-						SetEvent(Signal);
-					}
-				);
-
-				WaitForSingleObject(Signal, INFINITE);
-			}
-
 			FBLECharacteristicData Data(
 				Op.GetResults().Value().data(),
 				Op.GetResults().Value().Length()
@@ -654,18 +537,6 @@ void BLETransportWindows::ThreadRecursiveWriteRequest(
 	Characteristic.WriteValueWithResultAsync(buffer, GattWriteOption::WriteWithResponse).Completed(
 		[this, DeviceId, CharacteristicUuid](IAsyncOperation<GattWriteResult> Op, AsyncStatus Status)
 		{
-
-			if (Status != AsyncStatus::Completed)
-			{
-				HANDLE Signal = CreateEvent(nullptr, true, false, nullptr);
-
-				Op.Completed([&](auto&&, auto&&) {
-					SetEvent(Signal);
-					}
-				);
-
-				WaitForSingleObject(Signal, INFINITE);
-			}
 
 			bool bSuccess = false;
 			if (Op.GetResults().Status() == GattCommunicationStatus::Success)

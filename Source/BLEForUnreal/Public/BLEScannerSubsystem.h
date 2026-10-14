@@ -80,9 +80,10 @@ private:
 	TUniquePtr<IBLETransport> Transport;
 
 	/* There should only ever be ONE device object per physical peripheral */
-	UPROPERTY()
+	UPROPERTY(Transient)
 	TArray<UBLEDevice*> ConnectedDevices;
 
 	bool bIsScanning = false;
+	UPROPERTY(Transient)
 	TArray<UBLEScanRequest*> ScanRequests;
 };
