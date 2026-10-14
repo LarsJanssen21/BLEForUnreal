@@ -44,3 +44,15 @@ enum class EBLEDeviceConnectionReturnCode : uint8
 	ProtocolError,
 	AccessDenied
 };
+
+USTRUCT(BlueprintType)
+struct FBLEConnectionCompleteResult
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadOnly)
+	FString DeviceId;
+
+	UPROPERTY(BlueprintReadOnly)
+	EBLEDeviceConnectionReturnCode ReturnCode;
+};

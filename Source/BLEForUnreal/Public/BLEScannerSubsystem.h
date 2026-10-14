@@ -13,7 +13,9 @@
 class IBLETransport;
 class UBLEScanRequest;
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnBLEDeviceConnected, UBLEDevice*, ConnectedDevice, EBLEDeviceConnectionReturnCode, ReturnCode);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnBLEDeviceConnected, 
+	UBLEDevice*, ConnectedDevice, 
+	const FBLEConnectionCompleteResult&, ConnectionResult);
 
 /**
  * 

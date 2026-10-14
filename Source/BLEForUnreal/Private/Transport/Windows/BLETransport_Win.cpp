@@ -57,7 +57,8 @@ void BLETransportWindows::ConnectToDevice(const FString& DeviceId)
 		AsyncTask(ENamedThreads::GameThread, [this, DeviceId, 
 			DiscoveredServiceUuids = MoveTemp(DiscoveredServiceUuids)]()
 			{
-				OnConnectComplete.ExecuteIfBound(DeviceId, DiscoveredServiceUuids, EBLEDeviceConnectionReturnCode::Success);
+				OnConnectComplete.ExecuteIfBound(
+					DeviceId, DiscoveredServiceUuids, EBLEDeviceConnectionReturnCode::Success);
 			}
 		);
 
