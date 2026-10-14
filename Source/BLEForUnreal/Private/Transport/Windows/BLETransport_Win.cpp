@@ -15,9 +15,6 @@
 
 #include "CoreMinimal.h"
 
-
-
-
 BLETransportWindows::BLETransportWindows()
 {
 
@@ -60,7 +57,7 @@ void BLETransportWindows::ConnectToDevice(const FString& DeviceId)
 		AsyncTask(ENamedThreads::GameThread, [this, DeviceId, 
 			DiscoveredServiceUuids = MoveTemp(DiscoveredServiceUuids)]()
 			{
-				OnConnectComplete.ExecuteIfBound(DeviceId, DiscoveredServiceUuids, true);
+				OnConnectComplete.ExecuteIfBound(DeviceId, DiscoveredServiceUuids, EBLEDeviceConnectionReturnCode::Success);
 			}
 		);
 
@@ -83,7 +80,15 @@ void BLETransportWindows::ConnectToDevice(const FString& DeviceId)
 			// TODO: Handle AsyncStatus 
 			BluetoothLEDevice Device = { nullptr };
 
-			if (Status == AsyncStatus::Completed)
+			if (Status != AsyncStatus::Completed)
+			{
+				if (Status == AsyncStatus::Error)
+				{
+					winrt::hresult_error error(Op.ErrorCode());
+					UE_LOG(LogTemp, Warning, TEXT("Error code %s"), error.message().c_str());
+				}
+			}
+			else
 			{
 				Device = Op.GetResults();
 			}
@@ -93,7 +98,7 @@ void BLETransportWindows::ConnectToDevice(const FString& DeviceId)
 				AsyncTask(ENamedThreads::GameThread, [this, DeviceId]()
 					{
 						PendingConnections.Remove(DeviceId);
-						OnConnectComplete.ExecuteIfBound(DeviceId, {}, false);
+						OnConnectComplete.ExecuteIfBound(DeviceId, {}, EBLEDeviceConnectionReturnCode::Unreachable);
 					}
 				);
 				return;
@@ -352,12 +357,33 @@ void BLETransportWindows::DiscoverServicesAndComplete(BluetoothLEDevice Device, 
 			GattCommunicationStatus GattStatus = Op.GetResults().Status();
 			bool bDiscovereySucceeded = GattStatus == GattCommunicationStatus::Success;
 
-			if (!bDiscovereySucceeded)
+			if(GattStatus != GattCommunicationStatus::Success)
 			{
-				AsyncTask(ENamedThreads::GameThread, [this, DeviceId]()
+				EBLEDeviceConnectionReturnCode ReturnCode = EBLEDeviceConnectionReturnCode::Unreachable;
+
+				switch (GattStatus)
+				{
+					case GattCommunicationStatus::AccessDenied:
+					{
+						ReturnCode = EBLEDeviceConnectionReturnCode::AccessDenied;
+						break;
+					}
+					case GattCommunicationStatus::ProtocolError:
+					{
+						ReturnCode = EBLEDeviceConnectionReturnCode::ProtocolError;
+						break;
+					}
+					case GattCommunicationStatus::Unreachable:
+					{
+						ReturnCode = EBLEDeviceConnectionReturnCode::Unreachable;
+						break;
+					}
+				}
+
+				AsyncTask(ENamedThreads::GameThread, [this, DeviceId, ReturnCode]()
 					{
 						PendingConnections.Remove(DeviceId);
-						OnConnectComplete.ExecuteIfBound(DeviceId, {}, false);
+						OnConnectComplete.ExecuteIfBound(DeviceId, {}, ReturnCode);
 					});
 				return;
 			}
@@ -381,7 +407,7 @@ void BLETransportWindows::DiscoverServicesAndComplete(BluetoothLEDevice Device, 
 			AsyncTask(ENamedThreads::GameThread, [this, DeviceId, DiscoveredServiceUuids = MoveTemp(DiscoveredServiceUuids)]
 				{
 					PendingConnections.Remove(DeviceId);
-					OnConnectComplete.ExecuteIfBound(DeviceId, DiscoveredServiceUuids, true);
+					OnConnectComplete.ExecuteIfBound(DeviceId, DiscoveredServiceUuids, EBLEDeviceConnectionReturnCode::Success);
 				}
 			);
 		}
@@ -572,6 +598,20 @@ void BLETransportWindows::OnAdvertisementReceived(
 	FBLEScanResult Result;
 	Result.DeviceId = FormatDeviceId(Args.BluetoothAddress());
 	Result.DeviceLocalName = winrt::to_hstring(Args.Advertisement().LocalName()).c_str();
+
+	int16_t RawSignalStrength = Args.RawSignalStrengthInDBm();
+	if (RawSignalStrength > -40)
+	{
+		Result.SignalStrength = EBLEScanResultSignalStrength::Excellent;
+	}
+	else if (RawSignalStrength <= -40 && RawSignalStrength >= -70)
+	{
+		Result.SignalStrength = EBLEScanResultSignalStrength::Good;
+	}
+	else
+	{
+		Result.SignalStrength = EBLEScanResultSignalStrength::Weak;
+	}
 
 	for (const winrt::guid& uuid : Args.Advertisement().ServiceUuids())
 	{

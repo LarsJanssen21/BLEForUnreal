@@ -13,7 +13,7 @@
 class IBLETransport;
 class UBLEScanRequest;
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnBLEDeviceConnected, UBLEDevice*, ConnectedDevice, bool, bSuccess);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnBLEDeviceConnected, UBLEDevice*, ConnectedDevice, EBLEDeviceConnectionReturnCode, ReturnCode);
 
 /**
  * 
@@ -52,7 +52,7 @@ public:
 
 	void HandleTransportConnectionComplete(const FString& DeviceId, 
 		const TArray<FString>& DiscoveredServiceUuids, 
-		bool bSuccess);
+		EBLEDeviceConnectionReturnCode ReturnCode);
 
 	void HandleTransportCharacteristicUpdated(const FString& DeviceId,
 		const FString& CharacteristicUuid,

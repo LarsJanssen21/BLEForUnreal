@@ -89,7 +89,7 @@ void UBLEScannerSubsystem::ConnectToDevice(const FString& DeviceId)
 	{
 		if (ExistingDevice && ExistingDevice->GetDeviceId() == DeviceId)
 		{
-			OnDeviceConnected.Broadcast(ExistingDevice, true);
+			OnDeviceConnected.Broadcast(ExistingDevice, EBLEDeviceConnectionReturnCode::Success);
 			return;
 		}
 	}
@@ -126,18 +126,18 @@ void UBLEScannerSubsystem::HandleTransportDeviceFound(const FBLEScanResult& Resu
 
 void UBLEScannerSubsystem::HandleTransportConnectionComplete(const FString& DeviceId, 
 	const TArray<FString>& DiscoveredServiceUuids,
-	bool bSuccess)
+	EBLEDeviceConnectionReturnCode ReturnCode)
 {
 	UBLEDevice* Device = nullptr;
 
-	if (bSuccess)
+	if (ReturnCode == EBLEDeviceConnectionReturnCode::Success)
 	{
 		Device = NewObject<UBLEDevice>(this);
 		Device->Initialize(DeviceId, Transport.Get(), DiscoveredServiceUuids);
 		ConnectedDevices.Add(Device);
 	}
 
-	OnDeviceConnected.Broadcast(Device, bSuccess);
+	OnDeviceConnected.Broadcast(Device, ReturnCode);
 }
 
 void UBLEScannerSubsystem::HandleTransportCharacteristicUpdated(const FString& DeviceId,
