@@ -52,7 +52,7 @@ private:
 
 	FName MetricName;
 
-	UPROPERTY()
+	UPROPERTY(Transient)
 	TWeakObjectPtr<UBLEDevice> OwningDevice;
 
 	bool bIsActive = true;

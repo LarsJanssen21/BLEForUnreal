@@ -43,6 +43,6 @@ private:
 
 	EBLEDeviceCategory Category = EBLEDeviceCategory::Any;
 
-	UPROPERTY()
+	UPROPERTY(Transient)
 	TWeakObjectPtr<UBLEScannerSubsystem> OwningSubsystem;
 };

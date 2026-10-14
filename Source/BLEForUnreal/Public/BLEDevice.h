@@ -96,7 +96,7 @@ private:
 	void RemoveSubscription(UBLEMetricSubscription* Subscription);
 
 private:
-	UPROPERTY()
+	UPROPERTY(Transient)
 	FString DeviceId;
 
 	/*	Never owned here - Valid only as long as the owning Subsystem is alive	*/
@@ -117,9 +117,9 @@ private:
 	TMap<FName, IBLECharacteristicParser*> AvailableParsersByWrite; // Write name --> Parser
 	TMap<FString, int32_t> ParserSubscriberCount; // Characteristic UUID -> Subscriber Count
 
-	UPROPERTY()
+	UPROPERTY(Transient)
 	TArray<TObjectPtr<UBLEMetricSubscription>> ActiveSubscriptions;
-	UPROPERTY()
+	UPROPERTY(Transient)
 	TMap<FName, FReadArray> ReadRequests;
 
 	UPROPERTY(Transient)
