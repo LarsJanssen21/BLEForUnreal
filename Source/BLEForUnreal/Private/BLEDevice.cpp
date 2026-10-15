@@ -125,13 +125,6 @@ UBLEReadRequest* UBLEDevice::RequestValueRead(FName ReadName)
 
 UBLEWriteRequest* UBLEDevice::SubmitValueWriteInt32(FName WriteName, int32 InValue)
 {
-#if 0
-	if (!ensureMsgf(false, TEXT("Unstable, do not use!")))
-	{
-		return nullptr;
-	}
-#endif
-
 	IBLECharacteristicParser* Parser = FindWriteParser(WriteName);
 
 	if (!Parser)
