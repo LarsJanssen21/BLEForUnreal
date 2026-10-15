@@ -6,7 +6,7 @@
 
 class UBLEDevice;
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnMetricValueUpdated, float, Value);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnMetricValueUpdated, const FBLEMetric&, Metric);
 
 /*
  * 

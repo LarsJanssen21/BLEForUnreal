@@ -20,6 +20,17 @@ namespace BLEMetricNames {
 	*/
 	const FName HeartRateBpm = FName("heartrate.bpm"); // float-field
 
+
+	/*
+	 * Fitness machine service specification
+	 *
+	*/
+
+	// Training status
+	const FName FMSTSWattControl = FName("fms.ts.wattcontrol");
+
+	// Fitness machine status
+	const FName FMSStatusTargetPowerChanged = FName("fms.status.targetpowerchanged");
 }
 
 namespace BLEReadNames {
@@ -46,13 +57,12 @@ namespace BLEWriteNames {
 	*/
 	const FName HeartRateControlPoint = FName("heartrate.controlpoint");
 
+
 	/*
 	 * Fitness machine service specification
-	 * 
+	 *
 	*/
-
 	// FMS Control point
 	const FName FMSCP_RequestControl = FName("fms.cp.requestcontrol");
 	const FName FMSCP_TargetPower = FName("fms.cp.targetpower");
-
 }

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "IBLECharacteristicParser.generated.h"
+
 #define READ_ONLY_CHARACTERISTIC_IMPLEMENTATION(ServiceUuid, CharUuid, ...) \
 virtual FString GetServiceUuid() const override { return ServiceUuid; } \
 virtual FString GetCharacteristicUuid() const override { return CharUuid; } \
@@ -31,7 +33,8 @@ virtual TArray<FName> GetSupportedWriteSubmits() const override { return { __VA_
 virtual TArray<FBLEMetric> ParseNotify(const TArray<uint8>& Data) override { return {}; } \
 virtual TArray<FBLERead> ParseReadRequest(const TArray<uint8>& Data) override { return {}; }
 
-enum class DataType : uint8 {
+UENUM(BlueprintType)
+enum class CharacteristicDataType : uint8 {
 	Invalid,
 	Float,
 	Int,
@@ -39,55 +42,77 @@ enum class DataType : uint8 {
 };
 
 /* One decoded value from a characteristic update (e.g. HeartRateBPM (55.0f) */
+USTRUCT(BlueprintType)
 struct FBLEMetric
 {
-public:
+	GENERATED_BODY()
+
 	FBLEMetric() = default;
 	FBLEMetric(FName InMetric, float InValue)
 		:MetricName(InMetric)
 		,Value(InValue)
-		,Type(DataType::Float)
+		,Type(CharacteristicDataType::Float)
 	{}
+	FBLEMetric(FName InMetric, const FString& InValue)
+		:MetricName(InMetric)
+		, StringValue(InValue)
+		, Type(CharacteristicDataType::String)
+	{
+	}
 
 	FName MetricName;
+	UPROPERTY(BlueprintReadOnly)
 	float Value = 0.0f;
-	DataType Type = DataType::Invalid;
+	UPROPERTY(BlueprintReadOnly)
+	FString StringValue = "";
+	UPROPERTY(BlueprintReadOnly)
+	CharacteristicDataType Type = CharacteristicDataType::Invalid;
 };
 
 /* One decoded value from a read request (e.g. DeviceName ("HeartRateMonitor") */
+USTRUCT(BlueprintType)
 struct FBLERead
 {
-public:
+	GENERATED_BODY()
+
 	FBLERead() = default;
 	FBLERead(FName InRead, float InValue)
 		:ReadName(InRead)
 		,Value(InValue)
-		,Type(DataType::Float)
+		,Type(CharacteristicDataType::Float)
 	{ }
 	FBLERead(FName InRead, FString InString)
 		:ReadName(InRead)
 		,String(InString)
-		,Type(DataType::String)
+		,Type(CharacteristicDataType::String)
 	{ }
 
 	FName ReadName;
+	UPROPERTY(BlueprintReadOnly)
 	float Value = 0.0f;
+	UPROPERTY(BlueprintReadOnly)
 	FString String = "";
-	DataType Type = DataType::Invalid;
+	UPROPERTY(BlueprintReadOnly)
+	CharacteristicDataType Type = CharacteristicDataType::Invalid;
 };
 
+USTRUCT(BlueprintType)
 struct FBLEWrite
 {
+	GENERATED_BODY()
+
 	FBLEWrite() = default;
 	FBLEWrite(FName InWrite, int32 InValue)
 		:WriteName(InWrite)
 		,Value(InValue)
-		,Type(DataType::Int)
+		,Type(CharacteristicDataType::Int)
 	{ }
 
 	FName WriteName;
+	UPROPERTY(BlueprintReadOnly)
 	int32 Value;
-	DataType Type = DataType::Invalid;
+	UPROPERTY(BlueprintReadOnly)
+	CharacteristicDataType Type = CharacteristicDataType::Invalid;
 };
 
 /*

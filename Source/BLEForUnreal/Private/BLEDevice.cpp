@@ -181,7 +181,7 @@ void UBLEDevice::HandleCharacteristicData(const FString& CharacteristicUuid, con
 			{
 				if (Subscription && Subscription->GetMetricName() == Metric.MetricName)
 				{
-					Subscription->OnValueUpdated.Broadcast(Metric.Value);
+					Subscription->OnValueUpdated.Broadcast(Metric);
 				}
 			}
 		}

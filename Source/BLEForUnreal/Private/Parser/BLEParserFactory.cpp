@@ -12,6 +12,8 @@
 #include "Parser/GenericAccessProfile/GenericAccessProfileParser.h"
 
 #include "Parser/FitnessMachineService/FMSControlPoint.h"
+#include "Parser/FitnessMachineService/FMSTrainingStatus.h"
+#include "Parser/FitnessMachineService/FMSStatus.h"
 
 TArray<TUniquePtr<IBLECharacteristicParser>> CreateParsersForServices(
 	const TArray<FString>& DiscoveredServiceUuids)
@@ -50,6 +52,8 @@ TArray<TUniquePtr<IBLECharacteristicParser>> CreateParsersForServices(
 	if (DiscoveredServiceUuids.Contains(BLEGattUuids::FitnessMachineService))
 	{
 		Result.Add(MakeUnique<FFMSControlPointParser>());
+		Result.Add(MakeUnique<FFMSTrainingStatusParser>());
+		Result.Add(MakeUnique<FFMSStatusParser>());
 	}
 
 	return Result;
