@@ -51,6 +51,7 @@ private:
 	{
 		BluetoothLEDevice Device{ nullptr };
 		TMap<FString /*Normalize device UUID entry*/, GattDeviceService> Services;
+		TArray<FString> SupportedCharacteristics;
 	};
 
 private:

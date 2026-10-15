@@ -14,12 +14,12 @@ UBLEDevice::UBLEDevice(FVTableHelper& Helper) : Super(Helper) {}
 UBLEDevice::~UBLEDevice() = default;
 
 void UBLEDevice::Initialize(const FString& InDeviceId, IBLETransport* InTransport, 
-	const TArray<FString>& DiscoveredServiceUuids)
+	const TArray<FString>& DiscoveredServiceUuids, const TArray<FString>& DiscoveredCharacteristicUuids)
 {
 	DeviceId = InDeviceId;
 	Transport = InTransport;
 
-	for (TUniquePtr<IBLECharacteristicParser>& Parser : CreateParsersForServices(DiscoveredServiceUuids))
+	for (TUniquePtr<IBLECharacteristicParser>& Parser : CreateParsersForServices(DiscoveredServiceUuids, DiscoveredCharacteristicUuids))
 	{
 		IBLECharacteristicParser* RawParser = Parser.Get();
 		OwnedParsers.Add(MoveTemp(Parser));

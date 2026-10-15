@@ -16,8 +16,11 @@
 #include "Parser/FitnessMachineService/FMSStatus.h"
 #include "Parser/FitnessMachineService/FMSRangeSupport.h"
 
+#define ADD_PARSER_IF_SUPPORTED(CharUuid, ParserClassName) \
+if(DiscoveredCharacteristicUuids.Contains(CharUuid)) Result.Add(MakeUnique<ParserClassName>());
+
 TArray<TUniquePtr<IBLECharacteristicParser>> CreateParsersForServices(
-	const TArray<FString>& DiscoveredServiceUuids)
+	const TArray<FString>& DiscoveredServiceUuids, const TArray<FString>& DiscoveredCharacteristicUuids)
 {
 	TArray<TUniquePtr<IBLECharacteristicParser>> Result;
 
@@ -26,7 +29,7 @@ TArray<TUniquePtr<IBLECharacteristicParser>> CreateParsersForServices(
 	*/
 	if (DiscoveredServiceUuids.Contains(BLEGattUuids::GAPService))
 	{
-		Result.Add(MakeUnique<FDeviceNameParser>());
+		ADD_PARSER_IF_SUPPORTED(BLEGattUuids::DeviceName, FDeviceNameParser)
 	}
 
 	/*
@@ -34,8 +37,8 @@ TArray<TUniquePtr<IBLECharacteristicParser>> CreateParsersForServices(
 	*/
 	if (DiscoveredServiceUuids.Contains(BLEGattUuids::HeartRateService))
 	{
-		Result.Add(MakeUnique<FHeartRateParser>());
-		Result.Add(MakeUnique<FHeartRateControlPoint>());
+		ADD_PARSER_IF_SUPPORTED(BLEGattUuids::HeartRateMeasurement, FHeartRateParser)
+		ADD_PARSER_IF_SUPPORTED(BLEGattUuids::HeartRateControlPoint, FHeartRateControlPoint);
 	}
 
 	/*
@@ -43,8 +46,8 @@ TArray<TUniquePtr<IBLECharacteristicParser>> CreateParsersForServices(
 	*/
 	if (DiscoveredServiceUuids.Contains(BLEGattUuids::DeviceInformationService))
 	{
-		Result.Add(MakeUnique<FManufacturerStringParser>());
-		Result.Add(MakeUnique<FModelNumberStringParser>());
+		ADD_PARSER_IF_SUPPORTED(BLEGattUuids::ManufacturerNameString, FManufacturerStringParser);
+		ADD_PARSER_IF_SUPPORTED(BLEGattUuids::ModelNumberString, FModelNumberStringParser);
 	}
 
 	/*
@@ -52,10 +55,13 @@ TArray<TUniquePtr<IBLECharacteristicParser>> CreateParsersForServices(
 	*/
 	if (DiscoveredServiceUuids.Contains(BLEGattUuids::FitnessMachineService))
 	{
-		Result.Add(MakeUnique<FFMSControlPointParser>());
-		Result.Add(MakeUnique<FFMSTrainingStatusParser>());
-		Result.Add(MakeUnique<FFMSStatusParser>());
-		AddFMSSupportedRangeParsers(Result);
+		ADD_PARSER_IF_SUPPORTED(BLEGattUuids::FMSControlPoint, FFMSControlPointParser);
+		ADD_PARSER_IF_SUPPORTED(BLEGattUuids::FMSTrainingStatus, FFMSTrainingStatusParser);
+		ADD_PARSER_IF_SUPPORTED(BLEGattUuids::FMSStatus, FFMSStatusParser);
+
+		ADD_PARSER_IF_SUPPORTED(BLEGattUuids::FMSSupportedSpeedRange, FFMSSupportedSpeedRange);
+		ADD_PARSER_IF_SUPPORTED(BLEGattUuids::FMSSupportedInclinationRange, FFMSSupportedInclinationRange);
+		ADD_PARSER_IF_SUPPORTED(BLEGattUuids::FMSSupportedPowerRange, FFMSSupportedPowerRange);
 	}
 
 	return Result;

@@ -53,7 +53,8 @@ public:
 	void HandleTransportDeviceFound(const FBLEScanResult& result);
 
 	void HandleTransportConnectionComplete(const FString& DeviceId, 
-		const TArray<FString>& DiscoveredServiceUuids, 
+		const TArray<FString>& DiscoveredServiceUuids,
+		const TArray<FString>& DiscoveredCharacteristicUuids,
 		EBLEDeviceConnectionReturnCode ReturnCode);
 
 	void HandleTransportCharacteristicUpdated(const FString& DeviceId,

@@ -55,10 +55,10 @@ void BLETransportWindows::ConnectToDevice(const FString& DeviceId)
 		Entry->Services.GenerateKeyArray(DiscoveredServiceUuids);
 
 		AsyncTask(ENamedThreads::GameThread, [this, DeviceId, 
-			DiscoveredServiceUuids = MoveTemp(DiscoveredServiceUuids)]()
+			DiscoveredServiceUuids = MoveTemp(DiscoveredServiceUuids), SupportedCharUuids = Entry->SupportedCharacteristics]()
 			{
 				OnConnectComplete.ExecuteIfBound(
-					DeviceId, DiscoveredServiceUuids, EBLEDeviceConnectionReturnCode::Success);
+					DeviceId, DiscoveredServiceUuids, SupportedCharUuids, EBLEDeviceConnectionReturnCode::Success);
 			}
 		);
 
@@ -99,7 +99,7 @@ void BLETransportWindows::ConnectToDevice(const FString& DeviceId)
 				AsyncTask(ENamedThreads::GameThread, [this, DeviceId]()
 					{
 						PendingConnections.Remove(DeviceId);
-						OnConnectComplete.ExecuteIfBound(DeviceId, {}, EBLEDeviceConnectionReturnCode::Unreachable);
+						OnConnectComplete.ExecuteIfBound(DeviceId, {}, {}, EBLEDeviceConnectionReturnCode::Unreachable);
 					}
 				);
 				return;
@@ -384,7 +384,7 @@ void BLETransportWindows::DiscoverServicesAndComplete(BluetoothLEDevice Device, 
 				AsyncTask(ENamedThreads::GameThread, [this, DeviceId, ReturnCode]()
 					{
 						PendingConnections.Remove(DeviceId);
-						OnConnectComplete.ExecuteIfBound(DeviceId, {}, ReturnCode);
+						OnConnectComplete.ExecuteIfBound(DeviceId, {}, {}, ReturnCode);
 					});
 				return;
 			}
@@ -393,6 +393,7 @@ void BLETransportWindows::DiscoverServicesAndComplete(BluetoothLEDevice Device, 
 			Entry.Device = Device;
 
 			TArray<FString> DiscoveredServiceUuids;
+			TArray<FString> DiscoveredCharacteristicUuids;
 			for (GattDeviceService const& Service : Op.GetResults().Services())
 			{
 				const FString NormalizedUuid = BLEUuid::Normalize(winrt::to_hstring(Service.Uuid()).c_str());
@@ -401,14 +402,41 @@ void BLETransportWindows::DiscoverServicesAndComplete(BluetoothLEDevice Device, 
 					Entry.Services.Add(NormalizedUuid, Service);
 					DiscoveredServiceUuids.Add(NormalizedUuid);
 				}
+
+				HANDLE Signal = CreateEvent(nullptr, true, false, nullptr);
+				Service.GetCharacteristicsAsync(BluetoothCacheMode::Uncached).Completed(
+					[Signal, &DiscoveredCharacteristicUuids](const IAsyncOperation<GattCharacteristicsResult>& Op, AsyncStatus Status)
+					{
+						if (Status != AsyncStatus::Completed)
+						{
+							SetEvent(Signal);
+							return;
+						}
+
+						GattCharacteristicsResult Result = Op.GetResults();
+						for (const GattCharacteristic& Characteristic : Result.Characteristics())
+						{
+							DiscoveredCharacteristicUuids.Add(BLEUuid::Normalize(winrt::to_hstring(Characteristic.Uuid()).c_str()));
+						}
+
+						SetEvent(Signal);
+					});
+
+				WaitForSingleObject(Signal, INFINITE);
+
+				CloseHandle(Signal);
+
 			}
+			Entry.SupportedCharacteristics.Append(DiscoveredCharacteristicUuids);
 
 			ConnectedDevices.Add(DeviceId, MoveTemp(Entry));
 
-			AsyncTask(ENamedThreads::GameThread, [this, DeviceId, DiscoveredServiceUuids = MoveTemp(DiscoveredServiceUuids)]
+			AsyncTask(ENamedThreads::GameThread, 
+				[this, DeviceId, DiscoveredServiceUuids = MoveTemp(DiscoveredServiceUuids),
+				DiscoveredCharacteristicUuids = MoveTemp(DiscoveredCharacteristicUuids)]
 				{
 					PendingConnections.Remove(DeviceId);
-					OnConnectComplete.ExecuteIfBound(DeviceId, DiscoveredServiceUuids, EBLEDeviceConnectionReturnCode::Success);
+					OnConnectComplete.ExecuteIfBound(DeviceId, DiscoveredServiceUuids, DiscoveredCharacteristicUuids, EBLEDeviceConnectionReturnCode::Success);
 				}
 			);
 		}

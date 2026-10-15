@@ -10,9 +10,10 @@ using FBLECharacteristicData = TArray<uint8>;
 
 DECLARE_DELEGATE_OneParam(FONBLETransportDeviceFound, const FBLEScanResult& /*Result*/);
 
-DECLARE_DELEGATE_ThreeParams(FONBLEConnectComplete, 
+DECLARE_DELEGATE_FourParams(FONBLEConnectComplete, 
 	const FString& DeviceId, 
 	const TArray<FString>& DiscoveredServiceUuids, 
+	const TArray<FString>& DiscoveredCharacteristicUuids,
 	EBLEDeviceConnectionReturnCode ReturnCode);
 
 DECLARE_DELEGATE_ThreeParams(FONBLECharacteristicUpdated,

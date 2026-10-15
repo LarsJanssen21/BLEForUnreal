@@ -39,7 +39,7 @@ public:
 	virtual ~UBLEDevice() override;
 
 	void Initialize(const FString& InDeviceId, IBLETransport* InTransport, 
-		const TArray<FString>& DiscoveredServiceUuids);
+		const TArray<FString>& DiscoveredServiceUuids, const TArray<FString>& DiscoveredCharacteristicUuids);
 
 	UFUNCTION(BlueprintCallable, Category="BLE")
 	void Disconnect();
