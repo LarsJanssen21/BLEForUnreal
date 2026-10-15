@@ -14,6 +14,7 @@
 #include "Parser/FitnessMachineService/FMSControlPoint.h"
 #include "Parser/FitnessMachineService/FMSTrainingStatus.h"
 #include "Parser/FitnessMachineService/FMSStatus.h"
+#include "Parser/FitnessMachineService/FMSRangeSupport.h"
 
 TArray<TUniquePtr<IBLECharacteristicParser>> CreateParsersForServices(
 	const TArray<FString>& DiscoveredServiceUuids)
@@ -54,6 +55,7 @@ TArray<TUniquePtr<IBLECharacteristicParser>> CreateParsersForServices(
 		Result.Add(MakeUnique<FFMSControlPointParser>());
 		Result.Add(MakeUnique<FFMSTrainingStatusParser>());
 		Result.Add(MakeUnique<FFMSStatusParser>());
+		AddFMSSupportedRangeParsers(Result);
 	}
 
 	return Result;

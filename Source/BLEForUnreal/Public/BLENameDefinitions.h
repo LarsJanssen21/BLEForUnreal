@@ -47,6 +47,13 @@ namespace BLEReadNames {
 	const FName ManufacturerName = FName("manufacturername"); // string-field
 	const FName ModelNumber = FName("modelnumber"); // string-field
 
+	/*
+	 * Fitness machine service specification
+	 *
+	*/
+	const FName FMS_SupportedPowerRange = FName("fms.ranges.power");
+	const FName FMS_SupportedSpeedRange = FName("fms.ranges.speed");
+	const FName FMS_SupportedInclinationRange = FName("fms.ranges.inclination");
 }
 
 namespace BLEWriteNames {

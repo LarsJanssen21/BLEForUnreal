@@ -43,5 +43,8 @@ namespace BLEGattUuids {
 	const FString FMSControlPoint = FString(TEXT("00002ad9-0000-1000-8000-00805f9b34fb"));
 	const FString FMSTrainingStatus = FString(TEXT("00002ad3-0000-1000-8000-00805f9b34fb"));
 	const FString FMSStatus = FString(TEXT("00002ada-0000-1000-8000-00805f9b34fb"));
+	const FString FMSSupportedSpeedRange = FString(TEXT("00002ad8-0000-1000-8000-00805f9b34fb"));
+	const FString FMSSupportedInclinationRange = FString(TEXT("00002ad5-0000-1000-8000-00805f9b34fb"));
+	const FString FMSSupportedPowerRange = FString(TEXT("00002ad8-0000-1000-8000-00805f9b34fb"));
 
 }
