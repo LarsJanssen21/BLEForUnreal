@@ -19,7 +19,7 @@ public:
 		const UTF8CHAR* str = reinterpret_cast<const UTF8CHAR*>(Data.GetData());
 		FString DeviceName = FString(Data.Num(), str);
 
-		return { { BLEReadNames::DeviceName, DeviceName } };
+		return { { BLEReadNames::DeviceName, {DeviceName} } };
 	}
 
 	virtual void Reset() override {}

@@ -18,7 +18,7 @@ public:
 	{
 		FString Manufacturer = FString(Data.Num(), reinterpret_cast<const UTF8CHAR*>(Data.GetData()));
 
-		return { { BLEReadNames::ManufacturerName, Manufacturer } };
+		return { { BLEReadNames::ManufacturerName, {Manufacturer} } };
 	}
 
 	virtual void Reset() override { }
@@ -37,7 +37,7 @@ public:
 	{
 		FString ModelNumber = FString(Data.Num(), reinterpret_cast<const UTF8CHAR*>(Data.GetData()));
 
-		return { { BLEReadNames::ModelNumber, ModelNumber } };
+		return { { BLEReadNames::ModelNumber, { ModelNumber } } };
 	}
 
 	virtual void Reset() override { }

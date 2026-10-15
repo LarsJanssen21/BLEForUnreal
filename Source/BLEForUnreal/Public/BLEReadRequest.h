@@ -4,7 +4,7 @@
 
 #include "BLEReadRequest.generated.h"
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnReadRequestCompleted, FString, String);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnReadRequestCompleted, const FBLERead&, Read);
 
 /*
  * Object returned from BLEDevice. alive for as long as the request callback has not been called

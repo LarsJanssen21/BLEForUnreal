@@ -76,22 +76,22 @@ struct FBLERead
 	GENERATED_BODY()
 
 	FBLERead() = default;
-	FBLERead(FName InRead, float InValue)
+	FBLERead(FName InRead, const TArray<float>& InValues)
 		:ReadName(InRead)
-		,Value(InValue)
+		,Values(InValues)
 		,Type(CharacteristicDataType::Float)
 	{ }
-	FBLERead(FName InRead, FString InString)
+	FBLERead(FName InRead, const TArray<FString>& InStrings)
 		:ReadName(InRead)
-		,String(InString)
+		,Strings(InStrings)
 		,Type(CharacteristicDataType::String)
 	{ }
 
 	FName ReadName;
 	UPROPERTY(BlueprintReadOnly)
-	float Value = 0.0f;
+	TArray<float> Values = {};
 	UPROPERTY(BlueprintReadOnly)
-	FString String = "";
+	TArray<FString> Strings = {};
 	UPROPERTY(BlueprintReadOnly)
 	CharacteristicDataType Type = CharacteristicDataType::Invalid;
 };

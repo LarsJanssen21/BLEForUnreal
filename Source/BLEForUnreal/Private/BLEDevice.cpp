@@ -196,7 +196,7 @@ void UBLEDevice::HandleCharacteristicData(const FString& CharacteristicUuid, con
 			{
 				for (UBLEReadRequest* Request : (*FoundRequestArray).Array)
 				{
-					Request->OnRequestCompleted.Broadcast(Read.String);
+					Request->OnRequestCompleted.Broadcast(Read);
 					Request->bIsAlive = false;
 				}
 
