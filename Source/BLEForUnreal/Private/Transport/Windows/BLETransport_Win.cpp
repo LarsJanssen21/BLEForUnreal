@@ -114,8 +114,14 @@ void BLETransportWindows::Disconnect(const FString& DeviceId)
 	FConnectedDeviceEntry* ConnectedDevice = ConnectedDevices.Find(DeviceId);
 	if (ConnectedDevice)
 	{
+		for (FString CacheKey : ConnectedDevice->ActiveCharacteristics)
+		{
+			CloseCharacteristic(CacheKey);
+		}
 		ConnectedDevice->Device.Close();
+		ConnectedDevices.Remove(DeviceId);
 	}
+
 }
 
 void BLETransportWindows::SubscribeToCharacteristic(const FString& DeviceId,
@@ -160,8 +166,8 @@ void BLETransportWindows::SubscribeToCharacteristic(const FString& DeviceId,
 				// This path might get exectued multiple times if there's multiple requests to SubscribeToMetric or ReadRequest on a as of yet uncached characteristic in a single frame
 				// (e.g. on the device connect delegate where multiple metrics might be described to all at once).
 				// Mentioned here and assumed this is safe behavior (28/09/2026)
-				AsyncTask(ENamedThreads::GameThread, [this, CacheKey, Characteristic](){
-					CachedCharacteristics.Add({ CacheKey, Characteristic });
+				AsyncTask(ENamedThreads::GameThread, [this, DeviceId, CacheKey, Characteristic](){
+					AddCharacteristicToCache(DeviceId, CacheKey, Characteristic);
 				});
 
 				EnableNotifications(DeviceId, CharUuid, Characteristic);
@@ -231,8 +237,8 @@ void BLETransportWindows::ReadCharacteristic(const FString& DeviceId,
 				// but seeing that multiple code paths can reach the CachedCharaceristics map which is not thread safe it's a necessary evil.
 				// 
 				// Mentioned here and assumed this is safe behavior (28/09/2026)
-				AsyncTask(ENamedThreads::GameThread, [this, CacheKey, Characteristic]() {
-					CachedCharacteristics.Add({ CacheKey, Characteristic });
+				AsyncTask(ENamedThreads::GameThread, [this, DeviceId, CacheKey, Characteristic]() {
+					AddCharacteristicToCache(DeviceId, CacheKey, Characteristic);
 				});
 
 				ExecuteReadRequest(DeviceId, CharUuid, Characteristic);
@@ -283,10 +289,9 @@ void BLETransportWindows::WriteCharacteristic(const FString& DeviceId,
 				// but seeing that multiple code paths can reach the CachedCharaceristics map which is not thread safe it's a necessary evil.
 				// 
 				// Mentioned here and assumed this is safe behavior (28/09/2026)
-				AsyncTask(ENamedThreads::GameThread, [this, CacheKey, Characteristic]() {
-					CachedCharacteristics.Add({ CacheKey, Characteristic });
-					}
-				);
+				AsyncTask(ENamedThreads::GameThread, [this, DeviceId, CacheKey, Characteristic]() {
+						AddCharacteristicToCache(DeviceId, CacheKey, Characteristic);
+					});
 
 				if (bSupportsIndicate)
 				{
@@ -325,6 +330,34 @@ FString BLETransportWindows::ComposeCharacteristicCacheKey(
 {
 	return DeviceId + TEXT("|") + NormalizedCharUuid;
 }
+
+void BLETransportWindows::AddCharacteristicToCache(const FString& DeviceId, const FString& CacheKey, GattCharacteristic Characteristic)
+{
+	CachedCharacteristics.Add({ CacheKey, Characteristic });
+	FConnectedDeviceEntry* Entry = ConnectedDevices.Find(DeviceId);
+	if (Entry)
+	{
+		Entry->ActiveCharacteristics.Add(CacheKey);
+	}
+}
+
+void BLETransportWindows::CloseCharacteristic(FString CacheKey)
+{
+	if (GattCharacteristic* Characteristic = CachedCharacteristics.Find(CacheKey))
+	{
+		if (static_cast<uint32_t>((Characteristic->CharacteristicProperties()) & (GattCharacteristicProperties::Notify | GattCharacteristicProperties::Indicate)))
+		{
+			HANDLE Signal = CreateEvent(nullptr, true, false, nullptr);
+			Characteristic->WriteClientCharacteristicConfigurationDescriptorAsync(GattClientCharacteristicConfigurationDescriptorValue::None).Completed(
+				[&Signal](auto&&, auto&&)
+				{
+					SetEvent(Signal);
+				});
+			WaitForSingleObject(Signal, INFINITE);
+		}
+	}
+}
+
 
 bool BLETransportWindows::CharacteristicViableCheck(FString& OutCacheKey, 
 	GattCharacteristic*& OutCharacteristic, 

@@ -52,10 +52,15 @@ private:
 		BluetoothLEDevice Device{ nullptr };
 		TMap<FString /*Normalize device UUID entry*/, GattDeviceService> Services;
 		TArray<FString> SupportedCharacteristics;
+
+		TArray<FString /*CacheKey*/> ActiveCharacteristics; // Will be updated throughout connection duration, used for cleanup
 	};
 
 private:
 	FString ComposeCharacteristicCacheKey(FString DeviceId, FString NormalizedCharUuid);
+	void AddCharacteristicToCache(const FString& DeviceId, const FString& CacheKey, GattCharacteristic Characteristic);
+
+	void CloseCharacteristic(FString CacheKey);
 
 	bool CharacteristicViableCheck(FString& OutCacheKey,
 		GattCharacteristic*& OutCharacteristic,
