@@ -31,6 +31,21 @@ namespace BLEMetricNames {
 
 	// Fitness machine status
 	const FName FMSStatusTargetPowerChanged = FName("fms.status.targetpowerchanged");
+
+	// Indoor bike data
+	const FName FMSIndoorBikeInstantaneousSpeed = FName("fms.indoorbikedata.instantaneousspeed");
+	const FName FMSIndoorBikeAverageSpeed = FName("fms.indoorbikedata.averagespeed");
+	const FName FMSIndoorBikeInstantaneousCadence = FName("fms.indoorbikedata.instantaneouscadence");
+	const FName FMSIndoorBikeAverageCadence = FName("fms.indoorbikedata.averagecadence");
+	const FName FMSIndoorBikeTotalDistance = FName("fms.indoorbikedata.totaldistance");
+	const FName FMSIndoorBikeResistanceLevel = FName("fms.indoorbikedata.resistancelevel");
+	const FName FMSIndoorBikeInstantaneousPower = FName("fms.indoorbikedata.instantaneouspower");
+	const FName FMSIndoorBikeAveragePower = FName("fms.indoorbikedata.averagepower");
+	const FName FMSIndoorBikeExpendedEnergy = FName("fms.indoorbikedata.expendedenergy");
+	const FName FMSIndoorBikeHeartRate = FName("fms.indoorbikedata.heartrate");
+	const FName FMSIndoorBikeMetabolicEquivalent = FName("fms.indoorbikedata.metabolicequivalent");
+	const FName FMSIndoorBikeElapsedTime = FName("fms.indoorbikedata.elapsedtime");
+	const FName FMSIndoorBikeRemainingTime = FName("fms.indoorbikedata.remainingtime");
 }
 
 namespace BLEReadNames {

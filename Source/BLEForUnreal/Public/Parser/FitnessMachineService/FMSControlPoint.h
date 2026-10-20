@@ -48,8 +48,7 @@ public:
 			{
 				Buffer.SetNum(3);
 				int16& Wattage = *reinterpret_cast<int16*>(&Buffer[1]);
-
-				Wattage = 104;
+				Wattage = static_cast<int16>(Value);
 
 				break;
 			}

@@ -15,6 +15,7 @@
 #include "Parser/FitnessMachineService/FMSTrainingStatus.h"
 #include "Parser/FitnessMachineService/FMSStatus.h"
 #include "Parser/FitnessMachineService/FMSRangeSupport.h"
+#include "Parser/FitnessMachineService/FMSIndoorBikeData.h"
 
 #define ADD_PARSER_IF_SUPPORTED(CharUuid, ParserClassName) \
 if(DiscoveredCharacteristicUuids.Contains(CharUuid)) Result.Add(MakeUnique<ParserClassName>());
@@ -57,6 +58,7 @@ TArray<TUniquePtr<IBLECharacteristicParser>> CreateParsersForServices(
 	{
 		ADD_PARSER_IF_SUPPORTED(BLEGattUuids::FMSControlPoint, FFMSControlPointParser);
 		ADD_PARSER_IF_SUPPORTED(BLEGattUuids::FMSTrainingStatus, FFMSTrainingStatusParser);
+		ADD_PARSER_IF_SUPPORTED(BLEGattUuids::FMSIndoorBikeData, FFMSIndoorBikeData);
 		ADD_PARSER_IF_SUPPORTED(BLEGattUuids::FMSStatus, FFMSStatusParser);
 
 		ADD_PARSER_IF_SUPPORTED(BLEGattUuids::FMSSupportedSpeedRange, FFMSSupportedSpeedRange);
