@@ -16,6 +16,9 @@ DECLARE_DELEGATE_FourParams(FONBLEConnectComplete,
 	const TArray<FString>& DiscoveredCharacteristicUuids,
 	EBLEDeviceConnectionReturnCode ReturnCode);
 
+DECLARE_DELEGATE_OneParam(FOnBLEDeviceDisconnect,
+	const FString& DeviceId);
+
 DECLARE_DELEGATE_ThreeParams(FONBLECharacteristicUpdated,
 	const FString& DeviceId,
 	const FString& CharacteristicUuid,
@@ -67,6 +70,7 @@ public:
 
 	FONBLETransportDeviceFound OnDeviceFound;
 	FONBLEConnectComplete OnConnectComplete;
+	FOnBLEDeviceDisconnect OnDeviceDisconnect;
 	FONBLECharacteristicUpdated OnCharacteristicUpdated;
 	FONBLEReadRequestCompleted OnReadRequestCompleted;
 	FOnBLEWriteRequestCompleted OnWriteRequestCompleted;

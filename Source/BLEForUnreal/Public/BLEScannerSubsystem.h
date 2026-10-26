@@ -57,6 +57,8 @@ public:
 		const TArray<FString>& DiscoveredCharacteristicUuids,
 		EBLEDeviceConnectionReturnCode ReturnCode);
 
+	void HandleTransportDeviceDisconnect(const FString& DeviceId);
+
 	void HandleTransportCharacteristicUpdated(const FString& DeviceId,
 		const FString& CharacteristicUuid,
 		const FBLECharacteristicData& Data);

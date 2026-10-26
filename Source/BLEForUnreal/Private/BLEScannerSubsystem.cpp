@@ -24,6 +24,7 @@ void UBLEScannerSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	{
 		Transport->OnDeviceFound.BindUObject(this, &UBLEScannerSubsystem::HandleTransportDeviceFound);
 		Transport->OnConnectComplete.BindUObject(this, &UBLEScannerSubsystem::HandleTransportConnectionComplete);
+		Transport->OnDeviceDisconnect.BindUObject(this, &UBLEScannerSubsystem::HandleTransportDeviceDisconnect);
 		Transport->OnCharacteristicUpdated.BindUObject(this, &UBLEScannerSubsystem::HandleTransportCharacteristicUpdated);
 		Transport->OnReadRequestCompleted.BindUObject(this, &UBLEScannerSubsystem::HandleTransportReadRequestCompleted);
 		Transport->OnWriteRequestCompleted.BindUObject(this, &UBLEScannerSubsystem::HandleTransportWriteRequesCompleted);
@@ -146,6 +147,23 @@ void UBLEScannerSubsystem::HandleTransportConnectionComplete(const FString& Devi
 	}
 
 	OnDeviceConnected.Broadcast(Device, Result);
+}
+
+void UBLEScannerSubsystem::HandleTransportDeviceDisconnect(const FString& DeviceId)
+{
+	UBLEDevice* DeviceToRemove = nullptr;
+	for (UBLEDevice* Device : ConnectedDevices)
+	{
+		if (Device && Device->GetDeviceId() == DeviceId)
+		{
+			DeviceToRemove = Device;
+		}
+	}
+
+	if (DeviceToRemove)
+	{
+		ConnectedDevices.Remove(DeviceToRemove);
+	}
 }
 
 void UBLEScannerSubsystem::HandleTransportCharacteristicUpdated(const FString& DeviceId,

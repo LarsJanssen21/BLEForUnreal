@@ -118,10 +118,15 @@ void BLETransportWindows::Disconnect(const FString& DeviceId)
 		{
 			CloseCharacteristic(CacheKey);
 		}
-		ConnectedDevice->Device.Close();
-		ConnectedDevices.Remove(DeviceId);
-	}
+		ConnectedDevice->ActiveCharacteristics.Empty();
 
+		BluetoothLEDevice Device = ConnectedDevice->Device;
+		ConnectedDevices.Remove(DeviceId);
+
+		Device.Close();
+
+		OnDeviceDisconnect.ExecuteIfBound(DeviceId);
+	}
 }
 
 void BLETransportWindows::SubscribeToCharacteristic(const FString& DeviceId,
@@ -296,7 +301,7 @@ void BLETransportWindows::WriteCharacteristic(const FString& DeviceId,
 				if (bSupportsIndicate)
 				{
 					// Indication response
-					Characteristic.ValueChanged(
+					winrt::event_token Token = Characteristic.ValueChanged(
 						[this, DeviceId, CharUuid](GattCharacteristic const&, GattValueChangedEventArgs const& Args)
 						{
 							TArray<uint8> ResponsePacketBuffer(
@@ -309,6 +314,8 @@ void BLETransportWindows::WriteCharacteristic(const FString& DeviceId,
 									OnWriteIndicationReceived.ExecuteIfBound(DeviceId, CharUuid, ResponsePacketBuffer);
 								});
 						});
+
+					NotificationTokens.Add(CacheKey, Token);
 
 					Characteristic.WriteClientCharacteristicConfigurationDescriptorAsync(
 						GattClientCharacteristicConfigurationDescriptorValue::Indicate).Completed(
@@ -347,14 +354,16 @@ void BLETransportWindows::CloseCharacteristic(FString CacheKey)
 	{
 		if (static_cast<uint32_t>((Characteristic->CharacteristicProperties()) & (GattCharacteristicProperties::Notify | GattCharacteristicProperties::Indicate)))
 		{
-			HANDLE Signal = CreateEvent(nullptr, true, false, nullptr);
-			Characteristic->WriteClientCharacteristicConfigurationDescriptorAsync(GattClientCharacteristicConfigurationDescriptorValue::None).Completed(
-				[&Signal](auto&&, auto&&)
-				{
-					SetEvent(Signal);
-				});
-			WaitForSingleObject(Signal, INFINITE);
+			Characteristic->WriteClientCharacteristicConfigurationDescriptorAsync(GattClientCharacteristicConfigurationDescriptorValue::None);
 		}
+
+		if (winrt::event_token* Token = NotificationTokens.Find(CacheKey))
+		{
+			Characteristic->ValueChanged(*Token);
+			NotificationTokens.Remove(CacheKey);
+		}
+
+		CachedCharacteristics.Remove(CacheKey);
 	}
 }
 
