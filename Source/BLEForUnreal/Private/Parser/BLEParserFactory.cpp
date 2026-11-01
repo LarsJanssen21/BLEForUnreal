@@ -18,12 +18,22 @@
 #include "Parser/FitnessMachineService/FMSIndoorBikeData.h"
 
 #define ADD_PARSER_IF_SUPPORTED(CharUuid, ParserClassName) \
-if(DiscoveredCharacteristicUuids.Contains(CharUuid)) Result.Add(MakeUnique<ParserClassName>());
+	if(DiscoveredCharacteristicUuids.Contains(CharUuid)) Result.Add(MakeUnique<ParserClassName>());
+
+#define ADD_SERVICE_IF_SUPPORTED(ServiceUuid, ...) \
+	if(DiscoveredServiceUuids.Contains(ServiceUuid)) { \
+		__VA_ARGS__ \
+	}
+
+#define INCLUDE_CHARACTERISTIC(CharUuid, ParserClassName) \
+	if(DiscoveredCharacteristicUuids.Contains(CharUuid)) Result.Add(MakeUnique<ParserClassName>());
 
 TArray<TUniquePtr<IBLECharacteristicParser>> CreateParsersForServices(
 	const TArray<FString>& DiscoveredServiceUuids, const TArray<FString>& DiscoveredCharacteristicUuids)
 {
 	TArray<TUniquePtr<IBLECharacteristicParser>> Result;
+
+
 
 	/*
 	 * Generic access profile 
@@ -36,11 +46,18 @@ TArray<TUniquePtr<IBLECharacteristicParser>> CreateParsersForServices(
 	/*
 	 * Heart rate service
 	*/
+#if 0
 	if (DiscoveredServiceUuids.Contains(BLEGattUuids::HeartRateService))
 	{
 		ADD_PARSER_IF_SUPPORTED(BLEGattUuids::HeartRateMeasurement, FHeartRateParser)
 		ADD_PARSER_IF_SUPPORTED(BLEGattUuids::HeartRateControlPoint, FHeartRateControlPoint);
 	}
+#endif
+	ADD_SERVICE_IF_SUPPORTED(
+		BLEGattUuids::HeartRateService,
+		INCLUDE_CHARACTERISTIC(BLEGattUuids::HeartRateMeasurement, FHeartRateParser)
+		INCLUDE_CHARACTERISTIC(BLEGattUuids::HeartRateControlPoint, FHeartRateControlPoint)
+	)
 
 	/*
 	 * Device information service

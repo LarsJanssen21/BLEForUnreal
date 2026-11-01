@@ -56,8 +56,6 @@ public:
 		{
 			// Actually a 24-bit integeer
 			
-			//uint32 TotalDist = (*reinterpret_cast<const uint32*>(&Data[Index])) & 0x00ffffffU;
-
 			uint32 TotalDist = 0;
 			memcpy(&TotalDist, &Data[Index], 3);
 

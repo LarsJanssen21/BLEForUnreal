@@ -23,7 +23,7 @@ namespace BLEMetricNames {
 
 	/*
 	 * Fitness machine service specification
-	 *
+	 * https://www.bluetooth.com/specifications/specs/fitness-machine-service-1-0/
 	*/
 
 	// Training status
@@ -64,7 +64,7 @@ namespace BLEReadNames {
 
 	/*
 	 * Fitness machine service specification
-	 *
+	 * https://www.bluetooth.com/specifications/specs/fitness-machine-service-1-0/
 	*/
 	const FName FMS_SupportedPowerRange = FName("fms.ranges.power");
 	const FName FMS_SupportedSpeedRange = FName("fms.ranges.speed");
@@ -82,7 +82,7 @@ namespace BLEWriteNames {
 
 	/*
 	 * Fitness machine service specification
-	 *
+	 * https://www.bluetooth.com/specifications/specs/fitness-machine-service-1-0/
 	*/
 	// FMS Control point
 	const FName FMSCP_RequestControl = FName("fms.cp.requestcontrol");
